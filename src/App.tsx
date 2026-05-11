@@ -6,8 +6,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Mic, 
-  MicOff,
   Send, 
   LayoutGrid, 
   Zap, 
@@ -92,6 +90,12 @@ interface Task {
   proofImageUrl?: string;
   aiFeedback?: string;
   audioUrl?: string;
+  schedule?: {
+    type: 'daily' | 'weekly' | 'interval';
+    days?: number[];
+    interval?: number;
+    startDate?: number;
+  };
 }
 
 interface TaskPanel {
@@ -345,6 +349,88 @@ const TaskCard = ({
                 </div>
               </div>
             )}
+
+            <div className="mt-3 pt-3 border-t border-white/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Plánování</p>
+                <div className="flex gap-1.5">
+                  {(['daily', 'weekly', 'interval'] as const).map(type => (
+                    <button
+                      key={type}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const updates: Partial<Task['schedule']> = {
+                          type,
+                          days: type === 'weekly' ? [1] : [],
+                          interval: type === 'interval' ? 3 : 0,
+                          startDate: Date.now()
+                        };
+                        updateDoc(doc(db, 'tasks', task.id), { schedule: updates });
+                      }}
+                      className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-md transition-all ${
+                        (task.schedule?.type === type || (!task.schedule && type === 'daily'))
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-white/5 text-zinc-600 hover:text-zinc-400'
+                      }`}
+                    >
+                      {type === 'daily' ? 'Denně' : type === 'weekly' ? 'Týdně' : 'Interval'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {task.schedule?.type === 'weekly' && (
+                <div className="flex justify-between gap-1">
+                  {[1,2,3,4,5,6,0].map(d => {
+                    const labels = ['Ne','Po','Út','St','Čt','Pá','So'];
+                    const isSelected = task.schedule?.days?.includes(d);
+                    return (
+                      <button
+                        key={d}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const currentDays = task.schedule?.days || [];
+                          const newDays = isSelected 
+                            ? currentDays.filter(day => day !== d)
+                            : [...currentDays, d];
+                          updateDoc(doc(db, 'tasks', task.id), { 
+                            'schedule.days': newDays.length > 0 ? newDays : [d] 
+                          });
+                        }}
+                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
+                          isSelected ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'bg-white/5 text-zinc-400 border border-transparent'
+                        }`}
+                      >
+                        {labels[d]}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {task.schedule?.type === 'interval' && (
+                <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
+                  <span className="text-[10px] font-bold text-zinc-400">Opakovat každé</span>
+                  <div className="flex items-center gap-2">
+                     <input 
+                       type="number"
+                       min="1"
+                       max="99"
+                       value={task.schedule.interval || 3}
+                       onClick={(e) => e.stopPropagation()}
+                       onChange={(e) => {
+                         const val = parseInt(e.target.value);
+                         if (val > 0) {
+                           updateDoc(doc(db, 'tasks', task.id), { 'schedule.interval': val });
+                         }
+                       }}
+                       className="w-12 bg-zinc-950 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-bold text-center"
+                     />
+                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">dny</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -398,6 +484,9 @@ export default function App() {
   const [showRoutinePicker, setShowRoutinePicker] = useState<'morning' | 'evening' | null>(null);
   const [activeRoutineRun, setActiveRoutineRun] = useState<{ type: string; taskIds: string[] } | null>(null);
   const [routineStepIndex, setRoutineStepIndex] = useState(0);
+  const [routineAnswer, setRoutineAnswer] = useState('');
+  const [textInputTask, setTextInputTask] = useState<Task | null>(null);
+  const [textAnswer, setTextAnswer] = useState('');
 
   const lastErrorRef = useRef<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -876,55 +965,6 @@ export default function App() {
     }
   };
 
-  const toggleRecording = async () => {
-    if (isRecording) {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-      }
-      if (recognitionRef.current) {
-        try { (recognitionRef.current as { stop: () => void }).stop(); } catch { /* ignore */ }
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      setIsRecording(false);
-      return;
-    }
-
-    try {
-      setIsPreparingMic(true);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-
-      if (recognitionRef.current) {
-        try { (recognitionRef.current as { start: () => void }).start(); } catch { /* ignore */ }
-      }
-
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-
-      recorder.ondataavailable = (event: BlobEvent) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data);
-      };
-
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await transcribeWithGemini(audioBlob);
-      };
-
-      recorder.start();
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setIsPreparingMic(false);
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Mic start error:", error);
-      addMicLog("Chyba přístupu k mikrofonu.");
-      setIsPreparingMic(false);
-      setIsRecording(false);
-    }
-  };
-
   const speak = (text: string) => {
     if (!('speechSynthesis' in window) || !isSoundEnabled) return;
     window.speechSynthesis.cancel();
@@ -1199,6 +1239,24 @@ export default function App() {
     }
   };
 
+  const isTaskScheduledForToday = (t: Task) => {
+    if (!t.schedule || t.schedule.type === 'daily') return true;
+    
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    
+    if (t.schedule.type === 'weekly' && t.schedule.days) {
+      return t.schedule.days.includes(dayOfWeek);
+    }
+    
+    if (t.schedule.type === 'interval' && t.schedule.interval && t.schedule.startDate) {
+      const diffDays = Math.floor((now.getTime() - t.schedule.startDate) / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 && diffDays % t.schedule.interval === 0;
+    }
+    
+    return true;
+  };
+
   const addTask = async (
     text: string, 
     description: string = '', 
@@ -1281,7 +1339,7 @@ export default function App() {
         const panel = panels.find(p => p.id === panelId);
         if (panel) {
           await updateDoc(doc(db, 'panels', panelId), {
-            tasks: [...panel.tasks, docRef.id],
+            tasks: [...(panel.tasks || []), docRef.id],
             updatedAt: serverTimestamp()
           });
         }
@@ -1379,30 +1437,9 @@ export default function App() {
       }
 
       if (task.type === 'text_input') {
-        const answer = prompt(task.question || `Odpovězte na: ${task.text}`);
-        if (answer) {
-          const newAnswer = {
-            id: Math.random().toString(36).substring(2, 11),
-            text: answer,
-            timestamp: Date.now()
-          };
-          const updatedAnswers = [...(task.answers || []), newAnswer];
-          
-          try {
-            await updateDoc(doc(db, 'tasks', id), {
-              completed: true,
-              answers: updatedAnswers,
-              completedAt: Date.now(),
-              updatedAt: serverTimestamp()
-            });
-            playSuccessSound();
-            return;
-          } catch (e) {
-            handleFirestoreError(e, OperationType.UPDATE, `tasks/${id}`);
-          }
-        } else {
-          return;
-        }
+        setTextInputTask(task);
+        setTextAnswer('');
+        return;
       }
     }
 
@@ -1460,9 +1497,9 @@ export default function App() {
           <div className="space-y-8 max-w-xs">
             <FeatureItem 
               theme={theme}
-              icon={<Mic size={20}/>} 
-              title="Hlasové ovládání" 
-              desc="Mluvte se svým asistentem přirozeně. Shate rozumí vašim potřebám a okamžitě plánuje." 
+              icon={<Calendar size={20}/>} 
+              title="Chytré plánování" 
+              desc="Shate rozumí vašemu dni a pomáhá vám efektivně rozložit úkoly mezi ranní a večerní bloky." 
             />
             <FeatureItem 
               theme={theme}
@@ -1803,17 +1840,20 @@ export default function App() {
 
               <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory custom-scrollbar -mx-6 px-6 scroll-smooth">
                 {/* Panel 1: Dnešní úkoly */}
-                <div className="min-w-[300px] aspect-[4/5] snap-center flex flex-col group">
+                <motion.div 
+                  layoutId="panel-today"
+                  className="min-w-[280px] aspect-[5/8] snap-center flex flex-col group"
+                >
                   <div className="flex justify-between items-center mb-5 px-3">
                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-orange-500 transition-colors">DNES</h3>
                      <button 
-                        onClick={() => setShowUnscheduledPicker(true)}
+                        onClick={(e) => { e.stopPropagation(); setShowUnscheduledPicker(true); }}
                         className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-zinc-600 hover:text-white hover:bg-orange-600 transition-all active:scale-90"
                      >
                        <Plus size={14} strokeWidth={3} />
                      </button>
                   </div>
-                  <div className="flex-1 bg-zinc-900/40 border-2 border-white/5 p-5 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden backdrop-blur-2xl relative group-hover:border-orange-500/10 transition-all duration-700">
+                  <div className="flex-1 bg-zinc-900 border-2 border-white/5 p-5 rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-2xl relative group-hover:border-orange-500/20 transition-all duration-700">
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-orange-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
                       {(() => {
@@ -1845,25 +1885,30 @@ export default function App() {
                       })()}
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Panel 2: Ranní rutina */}
-                <div className="min-w-[300px] aspect-[4/5] snap-center flex flex-col group/r">
+                <motion.div 
+                  layoutId="panel-morning"
+                  className="min-w-[280px] aspect-[5/8] snap-center flex flex-col group/r"
+                >
                   <div className="flex justify-between items-center mb-5 px-3">
                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover/r:text-yellow-500 transition-colors">RANNÍ RUTINA</h3>
                      <button 
-                        onClick={() => setShowRoutinePicker('morning')}
+                        onClick={(e) => { e.stopPropagation(); setShowRoutinePicker('morning'); }}
                         className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-zinc-600 hover:text-white hover:bg-yellow-600 transition-all active:scale-90"
                      >
                        <Plus size={14} strokeWidth={3} />
                      </button>
                   </div>
-                  <div className="flex-1 bg-zinc-900/40 border-2 border-white/5 p-5 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden backdrop-blur-2xl relative group-hover/r:border-yellow-500/10 transition-all duration-700">
+                  <div className="flex-1 bg-zinc-900 border-2 border-white/5 p-5 rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-2xl relative group-hover/r:border-yellow-500/20 transition-all duration-700">
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-yellow-500/20 to-transparent opacity-0 group-hover/r:opacity-100 transition-opacity" />
                     <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
                       {(() => {
                         const routine = routines.find(r => r.type === 'morning');
-                        const routineTasks = (routine?.taskIds || []).map(tid => tasks.find(t => t.id === tid)).filter(Boolean) as Task[];
+                        const routineTasks = (routine?.taskIds || [])
+                          .map(tid => tasks.find(t => t.id === tid))
+                          .filter(t => t && isTaskScheduledForToday(t)) as Task[];
                         
                         if (routineTasks.length === 0) {
                           return (
@@ -1894,39 +1939,45 @@ export default function App() {
                       if (routineTasks.length > 0) {
                         return (
                           <button 
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setActiveRoutineRun({ type: 'morning', taskIds: routine!.taskIds || [] });
                               setRoutineStepIndex(0);
                             }}
                             className="mt-4 w-full py-4 bg-yellow-600/10 hover:bg-yellow-600 text-yellow-500 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border border-yellow-500/20"
                           >
                             <Zap size={14} className="fill-current" />
-                            SPUSTIT RUTINU
+                            SPUSTIT
                           </button>
                         );
                       }
                       return null;
                     })()}
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Panel 3: Večerní rutina */}
-                <div className="min-w-[300px] aspect-[4/5] snap-center flex flex-col group/v">
+                <motion.div 
+                  layoutId="panel-evening"
+                  className="min-w-[280px] aspect-[5/8] snap-center flex flex-col group/v"
+                >
                   <div className="flex justify-between items-center mb-5 px-3">
                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover/v:text-indigo-500 transition-colors">VEČERNÍ RUTINA</h3>
                      <button 
-                        onClick={() => setShowRoutinePicker('evening')}
+                        onClick={(e) => { e.stopPropagation(); setShowRoutinePicker('evening'); }}
                         className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-zinc-600 hover:text-white hover:bg-indigo-600 transition-all active:scale-90"
                      >
                        <Plus size={14} strokeWidth={3} />
                      </button>
                   </div>
-                  <div className="flex-1 bg-zinc-900/40 border-2 border-white/5 p-5 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden backdrop-blur-2xl relative group-hover/v:border-indigo-500/10 transition-all duration-700">
+                  <div className="flex-1 bg-zinc-900 border-2 border-white/5 p-5 rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-2xl relative group-hover/v:border-indigo-500/20 transition-all duration-700">
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent opacity-0 group-hover/v:opacity-100 transition-opacity" />
                     <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
                       {(() => {
                         const routine = routines.find(r => r.type === 'evening');
-                        const routineTasks = (routine?.taskIds || []).map(tid => tasks.find(t => t.id === tid)).filter(Boolean) as Task[];
+                        const routineTasks = (routine?.taskIds || [])
+                          .map(tid => tasks.find(t => t.id === tid))
+                          .filter(t => t && isTaskScheduledForToday(t)) as Task[];
                         
                         if (routineTasks.length === 0) {
                           return (
@@ -1957,24 +2008,108 @@ export default function App() {
                       if (routineTasks.length > 0) {
                         return (
                           <button 
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setActiveRoutineRun({ type: 'evening', taskIds: routine!.taskIds || [] });
                               setRoutineStepIndex(0);
                             }}
                             className="mt-4 w-full py-4 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-500 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border border-indigo-500/20"
                           >
                             <Moon size={14} className="fill-current" />
-                            SPUSTIT RUTINU
+                            SPUSTIT
                           </button>
                         );
                       }
                       return null;
                     })()}
                   </div>
-                </div>
+                </motion.div>
               </div>
 
               <AnimatePresence>
+                {textInputTask && (
+                  <>
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setTextInputTask(null)}
+                      className="fixed inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md"
+                    />
+                    <motion.div 
+                      initial={{ y: "100%" }}
+                      animate={{ y: 0 }}
+                      exit={{ y: "100%" }}
+                      transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                      className="fixed inset-x-0 bottom-0 z-[201] bg-zinc-900 border-t border-white/5 rounded-t-[2.5rem] shadow-[0_-10px_50px_rgba(0,0,0,0.5)] flex flex-col h-[75vh] max-w-md mx-auto overflow-hidden p-8"
+                    >
+                      <div className="w-10 h-1 bg-zinc-800/50 rounded-full mx-auto mb-6 shrink-0" />
+                      
+                      <div className="flex-1 flex flex-col pt-4">
+                        <div className="mb-8 px-2">
+                          <p className="text-[9px] font-black uppercase tracking-[0.4em] text-purple-500 mb-2">DIALOG</p>
+                          <div className="space-y-2">
+                            <h2 className="text-2xl font-bold text-white tracking-tight leading-tight">{textInputTask.text}</h2>
+                            {textInputTask.description && <p className="text-zinc-500 text-sm leading-relaxed">{textInputTask.description}</p>}
+                          </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col gap-6 px-2 overflow-y-auto min-h-0">
+                          <div className="relative group">
+                            <div className="absolute left-4 top-4 text-zinc-700 group-focus-within:text-purple-500 transition-colors">
+                              <MessagesSquare size={14} />
+                            </div>
+                            <textarea 
+                              value={textAnswer}
+                              onChange={(e) => setTextAnswer(e.target.value)}
+                              autoFocus
+                              placeholder="Napište svou odpověď..."
+                              className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl p-4 pl-10 text-[13px] text-white placeholder:text-zinc-800 focus:outline-none focus:border-purple-500/20 transition-all font-medium tracking-tight h-32 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-8 flex flex-col gap-3 pb-4">
+                          <button 
+                            disabled={!textAnswer.trim()}
+                            onClick={async () => {
+                              const newAnswer = {
+                                id: Math.random().toString(36).substring(2, 11),
+                                text: textAnswer,
+                                timestamp: Date.now()
+                              };
+                              const updatedAnswers = [...(textInputTask.answers || []), newAnswer];
+                              try {
+                                await updateDoc(doc(db, 'tasks', textInputTask.id), {
+                                  completed: true,
+                                  answers: updatedAnswers,
+                                  completedAt: Date.now(),
+                                  updatedAt: serverTimestamp()
+                                });
+                                playSuccessSound();
+                                setTextInputTask(null);
+                                setTextAnswer('');
+                              } catch (e) {
+                                handleFirestoreError(e, OperationType.UPDATE, `tasks/${textInputTask.id}`);
+                              }
+                            }}
+                            className="w-full py-5 bg-purple-600 disabled:bg-zinc-800/50 disabled:text-zinc-700 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+                          >
+                            <Check size={16} strokeWidth={3} />
+                            POTVRDIT
+                          </button>
+                          <button 
+                            onClick={() => setTextInputTask(null)}
+                            className="w-full py-3 text-zinc-600 text-[8px] font-black uppercase tracking-widest hover:text-zinc-400 transition-colors"
+                          >
+                            ZRUŠIT
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+
                 {activeRoutineRun && (
                   <>
                     <motion.div 
@@ -1988,32 +2123,34 @@ export default function App() {
                       initial={{ y: "100%" }}
                       animate={{ y: 0 }}
                       exit={{ y: "100%" }}
-                      transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                      className="fixed inset-x-0 bottom-0 z-[201] bg-zinc-900 border-t border-white/10 rounded-t-[3rem] shadow-[0_-10px_50px_rgba(0,0,0,0.5)] flex flex-col max-h-[90vh] max-w-md mx-auto overflow-hidden p-8"
+                      transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                      className="fixed inset-x-0 bottom-0 z-[201] bg-zinc-900 border-t border-white/5 rounded-t-[2.5rem] shadow-[0_-10px_50px_rgba(0,0,0,0.5)] flex flex-col h-[75vh] max-w-md mx-auto overflow-hidden p-8"
                     >
-                      <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-8 shrink-0" />
+                      <div className="w-10 h-1 bg-zinc-800/50 rounded-full mx-auto mb-6 shrink-0" />
                       
                       {(() => {
                         const uncompletedTaskIds = activeRoutineRun.taskIds.filter(tid => {
                           const t = tasks.find(x => x.id === tid);
-                          return t && !t.completed;
+                          return t && !t.completed && isTaskScheduledForToday(t);
                         });
                         
                         if (uncompletedTaskIds.length === 0 || routineStepIndex >= uncompletedTaskIds.length) {
                           return (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                              <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.4)]">
-                                <Check size={40} className="text-white" strokeWidth={3} />
-                              </div>
-                              <div>
-                                <h3 className="text-2xl font-bold text-white mb-2">Skvělá práce!</h3>
-                                <p className="text-zinc-500 text-[11px] font-black uppercase tracking-widest">Dnešní rutina je u konce</p>
-                              </div>
+                            <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+                              <motion.div 
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.3)] mb-8"
+                              >
+                                <Check size={32} className="text-white" strokeWidth={3} />
+                              </motion.div>
+                              <h3 className="text-xl font-bold text-white mb-1">Skvělá práce!</h3>
+                              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] mb-12">Rutina je hotová</p>
                               <button 
                                 onClick={() => setActiveRoutineRun(null)}
-                                className="w-full py-5 bg-white text-zinc-950 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
+                                className="w-full py-5 bg-white text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
                               >
-                                ZAVŘÍT
+                                ZPĚT DO MENU
                               </button>
                             </div>
                           );
@@ -2024,45 +2161,74 @@ export default function App() {
                         if (!task) return null;
 
                         return (
-                          <div className="flex-1 flex flex-col">
-                            <div className="mb-12">
-                              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 mb-2">KROK {routineStepIndex + 1} Z {uncompletedTaskIds.length}</p>
-                              <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+                          <div className="flex-1 flex flex-col pt-4">
+                            <div className="mb-10 px-2">
+                              <p className="text-[9px] font-black uppercase tracking-[0.4em] text-zinc-600 mb-2">KROK {routineStepIndex + 1} Z {uncompletedTaskIds.length}</p>
+                              <div className="h-1 bg-zinc-800/50 rounded-full overflow-hidden">
                                 <motion.div 
-                                  className="h-full bg-blue-600"
+                                  className="h-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]"
                                   initial={{ width: 0 }}
                                   animate={{ width: `${((routineStepIndex + 1) / uncompletedTaskIds.length) * 100}%` }}
                                 />
                               </div>
                             </div>
 
-                            <div className="flex-1 flex flex-col justify-center gap-6">
-                              <h2 className="text-3xl font-bold text-white tracking-tight leading-tight">{task.text}</h2>
-                              {task.description && <p className="text-zinc-400 text-lg leading-relaxed">{task.description}</p>}
+                            <div className="flex-1 flex flex-col justify-center gap-1 px-2 overflow-y-auto min-h-0">
+                              <div className="space-y-0.5">
+                                <h2 className="text-base font-bold text-white tracking-tight leading-tight">{task.text}</h2>
+                                {task.description && <p className="text-zinc-500 text-[9px] leading-relaxed">{task.description}</p>}
+                              </div>
                               
                               {task.type === 'text_input' && (
-                                <div className="p-6 rounded-3xl bg-blue-600/5 border border-blue-500/20 italic text-blue-400">
-                                  {task.question}
+                                <div className="space-y-4">
+                                  <div className="relative group">
+                                    <div className="absolute left-4 top-4 text-zinc-700 group-focus-within:text-blue-500 transition-colors">
+                                      <MessagesSquare size={14} />
+                                    </div>
+                                    <textarea 
+                                      value={routineAnswer}
+                                      onChange={(e) => setRoutineAnswer(e.target.value)}
+                                      autoFocus
+                                      placeholder="Napište svou odpověď..."
+                                      className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl p-4 pl-10 text-[13px] text-white placeholder:text-zinc-800 focus:outline-none focus:border-blue-500/20 transition-all font-medium tracking-tight h-24 resize-none"
+                                    />
+                                  </div>
                                 </div>
                               )}
                             </div>
 
-                            <div className="mt-12 flex flex-col gap-3">
+                            <div className="mt-10 flex flex-col gap-3 pb-4">
                               <button 
+                                disabled={task.type === 'text_input' && !routineAnswer.trim()}
                                 onClick={async () => {
-                                  await toggleTask(task.id, false);
-                                  // The actual state update for completion will trigger the logic to move to next index if we were watching it
-                                  // but here we just manually increment because toggleTask is async
+                                  if (task.type === 'text_input') {
+                                    const newAnswer = {
+                                      id: Math.random().toString(36).substring(2, 11),
+                                      text: routineAnswer,
+                                      timestamp: Date.now()
+                                    };
+                                    const updatedAnswers = [...(task.answers || []), newAnswer];
+                                    await updateDoc(doc(db, 'tasks', task.id), {
+                                      completed: true,
+                                      answers: updatedAnswers,
+                                      completedAt: Date.now(),
+                                      updatedAt: serverTimestamp()
+                                    });
+                                    setRoutineAnswer('');
+                                    playSuccessSound();
+                                  } else {
+                                    await toggleTask(task.id, false);
+                                  }
                                   setRoutineStepIndex(prev => prev + 1);
                                 }}
-                                className="w-full py-6 bg-blue-600 text-white rounded-[2rem] text-[12px] font-black uppercase tracking-[0.3em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+                                className="w-full py-5 bg-blue-600 disabled:bg-zinc-800/50 disabled:text-zinc-700 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
                               >
-                                <Check size={20} strokeWidth={3} />
+                                <Check size={16} strokeWidth={3} />
                                 HOTOVO
                               </button>
                               <button 
                                 onClick={() => setActiveRoutineRun(null)}
-                                className="w-full py-4 text-zinc-500 text-[9px] font-black uppercase tracking-widest hover:text-white transition-colors"
+                                className="w-full py-3 text-zinc-600 text-[8px] font-black uppercase tracking-widest hover:text-zinc-400 transition-colors"
                               >
                                 PŘERUŠIT RUTINU
                               </button>
@@ -2095,8 +2261,8 @@ export default function App() {
                       <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto my-6 shrink-0" />
                       <div className="px-8 pb-6 flex justify-between items-center">
                         <div>
-                          <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-500">Pick to Agenda</h2>
-                          <p className="text-xl font-bold text-white tracking-tight">Knihovna konceptů</p>
+                          <h2 className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-500">Pick to Agenda</h2>
+                          <p className="text-sm font-bold text-white tracking-tight">Knihovna konceptů</p>
                         </div>
                         <button 
                           onClick={() => setShowUnscheduledPicker(false)}
@@ -2123,12 +2289,12 @@ export default function App() {
                                   scheduleTask(t.id, date.toISOString());
                                   setShowUnscheduledPicker(false);
                                 }}
-                                className="w-full text-left p-5 rounded-3xl bg-zinc-800/40 hover:bg-blue-600/10 border border-white/5 hover:border-blue-500/20 transition-all group flex items-center justify-between"
+                                className="w-full text-left p-4 rounded-2xl bg-zinc-800/40 hover:bg-blue-600/10 border border-white/5 hover:border-blue-500/20 transition-all group flex items-center justify-between"
                               >
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-bold text-zinc-100 group-hover:text-white transition-colors">{t.text}</p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                  <p className="text-xs font-bold text-zinc-100 group-hover:text-white transition-colors">{t.text}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className={`text-[7px] font-black uppercase tracking-widest px-1 py-0.5 rounded ${
                                       t.type === 'prove_it' ? 'bg-orange-500/20 text-orange-400' :
                                       t.type === 'text_input' ? 'bg-purple-500/20 text-purple-400' :
                                       'bg-zinc-800 text-zinc-500'
@@ -2144,20 +2310,6 @@ export default function App() {
                               </button>
                             ))
                         )}
-                      </div>
-
-                      {/* AI Micro button inside picker */}
-                      <div className="absolute bottom-8 right-8 z-[160]">
-                        <button 
-                          onClick={() => {
-                            // Trigger AI chat/voice creation if implemented
-                            setIsChatMode(true);
-                          }}
-                          className="w-14 h-14 rounded-2xl bg-blue-600 text-white shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group overflow-hidden relative"
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <Mic size={24} />
-                        </button>
                       </div>
                     </motion.div>
                   </>
@@ -2255,7 +2407,7 @@ export default function App() {
                   <div className="space-y-3">
                     {(() => {
                       const routine = routines.find(r => r.type === activeRoutineType);
-                      if (!routine || routine.taskIds.length === 0) {
+                      if (!routine || (routine.taskIds || []).length === 0) {
                         return (
                           <div className="flex flex-col items-center justify-center py-20 opacity-20 text-center">
                             <Zap size={40} className="mb-4 text-zinc-700" />
@@ -2274,7 +2426,7 @@ export default function App() {
                             onToggle={() => {}} // No toggle in routine view, or maybe different action?
                             onDelete={async () => {
                               if (!user) return;
-                              const newTaskIds = routine.taskIds.filter(id => id !== tid);
+                              const newTaskIds = (routine.taskIds || []).filter(id => id !== tid);
                               await updateDoc(doc(db, 'routines', routine.id), { taskIds: newTaskIds, updatedAt: Date.now() });
                             }}
                             showSchedule={false}
@@ -2310,8 +2462,8 @@ export default function App() {
               <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto my-6 shrink-0" />
               <div className="px-8 pb-6 flex justify-between items-center">
                 <div>
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-500">Pick to Routine</h2>
-                  <p className="text-xl font-bold text-white tracking-tight">Knihovna úkolů</p>
+                  <h2 className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-500">Pick to Routine</h2>
+                  <p className="text-sm font-bold text-white tracking-tight">Knihovna úkolů</p>
                 </div>
                 <button 
                   onClick={() => setShowRoutinePicker(null)}
@@ -2321,7 +2473,7 @@ export default function App() {
                 </button>
               </div>
               
-              <div className="flex-1 overflow-y-auto px-6 pb-12 space-y-3 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto px-6 pb-12 space-y-2 custom-scrollbar">
                 {tasks.filter(t => !t.sourceTaskId).sort((a,b) => a.text.localeCompare(b.text)).map(t => (
                   <button
                     key={t.id}
@@ -2359,11 +2511,11 @@ export default function App() {
                       }
                       setShowRoutinePicker(null);
                     }}
-                    className="w-full text-left p-5 rounded-3xl bg-zinc-800/40 hover:bg-blue-600/10 border border-white/5 hover:border-blue-500/20 transition-all group flex items-center justify-between"
+                    className="w-full text-left p-4 rounded-2xl bg-zinc-800/40 hover:bg-blue-600/10 border border-white/5 hover:border-blue-500/20 transition-all group flex items-center justify-between"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-zinc-100 group-hover:text-white transition-colors">{t.text}</p>
-                      {t.description && <p className="text-[10px] text-zinc-500 mt-1 truncate">{t.description}</p>}
+                      <p className="text-xs font-bold text-zinc-100 group-hover:text-white transition-colors">{t.text}</p>
+                      {t.description && <p className="text-[9px] text-zinc-500 mt-0.5 truncate">{t.description}</p>}
                     </div>
                     <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-blue-600 transition-all">
                       <Plus size={16} className="text-zinc-600 group-hover:text-white" />
@@ -2672,61 +2824,26 @@ export default function App() {
                   />
                 </div>
 
-                {/* Mic/Send Button */}
+                {/* Send Button */}
                 <div className="relative h-full">
-                  <AnimatePresence>
-                    {isRecording && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute -inset-1 bg-blue-500/10 rounded-2xl blur-lg pointer-events-none z-0"
-                      />
-                    )}
-                  </AnimatePresence>
-                  
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => {
                       e.preventDefault();
                       if (inputText.trim()) {
                         handleSend();
-                      } else {
-                        toggleRecording();
                       }
                     }}
+                    disabled={!inputText.trim()}
                     className={`w-14 h-full rounded-2xl flex items-center justify-center transition-all shadow-xl shadow-black/20 relative overflow-hidden z-10 ${
                       inputText.trim() 
                         ? 'bg-blue-600 text-white' 
-                        : isPreparingMic ? 'bg-zinc-800 text-zinc-500' : isRecording ? 'bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.5)]' : 'bg-zinc-900 text-zinc-600 border border-white/5'
+                        : 'bg-zinc-900 text-zinc-700 border border-white/5 opacity-50'
                     }`}
                   >
-                  <AnimatePresence mode="wait">
-                    {isPreparingMic ? (
-                      <motion.div key="preparing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center justify-center">
-                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full" />
-                      </motion.div>
-                    ) : inputText.trim() ? (
-                      <motion.div key="send" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }}>
-                        <Send size={20} />
-                      </motion.div>
-                    ) : (
-                      <motion.div key="mic" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }}>
-                        {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {isRecording && (
-                    <motion.div 
-                      layoutId="pulse"
-                      className="absolute inset-0 bg-white/20"
-                      animate={{ opacity: [0, 0.4, 0] }}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
-                    />
-                  )}
-                </motion.button>
-              </div>
+                    <Send size={20} />
+                  </motion.button>
+                </div>
             </motion.div>
           )}
         </AnimatePresence>
