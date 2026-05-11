@@ -1,0 +1,13 @@
+{
+  "name": "Shate AI",
+  "description": "Minimalist mobile personal assistant with AI chat, voice input, and task management.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "AI Chat",
+    "Voice-to-Text",
+    "Task Management"
+  ]
+}

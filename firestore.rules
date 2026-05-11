@@ -1,0 +1,160 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Helpers ---
+    function isSignedIn() {
+      // Relaxed for user request: any signed in user can access
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      // User requested "bez omezeni" (without limits) for all accounts
+      return isSignedIn();
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is number; 
+    }
+
+    // --- Entities Validation ---
+
+    function isValidTask(data) {
+      let requiredFields = ['text', 'completed', 'dueDate', 'createdAt', 'userId'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() <= 15
+        && data.text is string && data.text.size() <= 1000
+        && data.completed is bool
+        && data.dueDate is string && data.dueDate.size() <= 64
+        && isValidTimestamp(data.createdAt)
+        && (!('description' in data) || (data.description is string && data.description.size() <= 2000))
+        && (!('sourceTaskId' in data) || (data.sourceTaskId is string && data.sourceTaskId.size() <= 128))
+        && (!('panelId' in data) || (data.panelId is string && data.panelId.size() <= 128))
+        && (!('proofRequired' in data) || data.proofRequired is bool)
+        && (!('proofImageUrl' in data) || (data.proofImageUrl is string && data.proofImageUrl.size() <= 2048))
+        && (!('aiFeedback' in data) || (data.aiFeedback is string && data.aiFeedback.size() <= 5000))
+        && (!('audioUrl' in data) || (data.audioUrl is string && data.audioUrl.size() <= 1000000));
+    }
+
+    function isValidPanel(data) {
+      let requiredFields = ['title', 'userId', 'order', 'createdAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() <= 6
+        && data.title is string && data.title.size() <= 128
+        && data.order is number
+        && isValidTimestamp(data.createdAt)
+        && (!('color' in data) || data.color in ['gray', 'blue', 'red']);
+    }
+
+    function isValidChat(data) {
+      let requiredFields = ['title', 'userId', 'createdAt', 'lastMessageAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() == 4
+        && data.title is string && data.title.size() <= 200
+        && isValidTimestamp(data.createdAt)
+        && isValidTimestamp(data.lastMessageAt);
+    }
+
+    function isValidMessage(data) {
+      let requiredFields = ['chatId', 'userId', 'role', 'content', 'timestamp'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() <= 6
+        && data.chatId is string && data.chatId.size() <= 128
+        && data.role in ['user', 'assistant']
+        && data.content is string && data.content.size() <= 10000
+        && isValidTimestamp(data.timestamp)
+        && (!('suggestedTask' in data) || (
+           data.suggestedTask.keys().hasAll(['text', 'status'])
+           && data.suggestedTask.text is string
+           && data.suggestedTask.status in ['suggested', 'added']
+           && (!('description' in data.suggestedTask) || data.suggestedTask.description is string)
+        ));
+    }
+
+    function isValidRoutine(data) {
+      let requiredFields = ['userId', 'type', 'taskIds', 'updatedAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() == 4
+        && data.type in ['morning', 'evening']
+        && data.taskIds is list && data.taskIds.size() <= 50
+        && isValidTimestamp(data.updatedAt);
+    }
+
+    // --- Collection Routes ---
+
+    match /tasks/{taskId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && isValidId(taskId);
+      allow create: if isSignedIn() && isValidId(taskId) && isValidTask(incoming());
+      allow update: if isSignedIn() 
+                    && isValidId(taskId)
+                    && isValidTask(incoming());
+      allow delete: if isSignedIn() && isValidId(taskId);
+    }
+
+    match /panels/{panelId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && isValidId(panelId);
+      allow create: if isSignedIn() && isValidId(panelId) && isValidPanel(incoming());
+      allow update: if isSignedIn()
+                    && isValidId(panelId)
+                    && isValidPanel(incoming());
+      allow delete: if isSignedIn() && isValidId(panelId);
+    }
+
+    match /chats/{chatId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && isValidId(chatId);
+      allow create: if isSignedIn() && isValidId(chatId) && isValidChat(incoming());
+      allow update: if isSignedIn()
+                    && isValidId(chatId)
+                    && isValidChat(incoming());
+      allow delete: if isSignedIn() && isValidId(chatId);
+    }
+
+    match /messages/{messageId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && isValidId(messageId);
+      allow create: if isSignedIn() && isValidId(messageId) && isValidMessage(incoming());
+      allow update: if isSignedIn()
+                    && isValidId(messageId)
+                    && isValidMessage(incoming());
+      allow delete: if isSignedIn() && isValidId(messageId);
+    }
+
+    match /routines/{routineId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && isValidId(routineId);
+      allow create: if isSignedIn() && isValidId(routineId) && isValidRoutine(incoming());
+      allow update: if isSignedIn()
+                    && isValidId(routineId)
+                    && isValidRoutine(incoming());
+      allow delete: if isSignedIn() && isValidId(routineId);
+    }
+
+    match /userSettings/{userId} {
+      // Users can only read/write their own settings by document ID (which matches their UID)
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId 
+                            && incoming().userId == request.auth.uid;
+      allow delete: if false; // Deny deletion for now
+    }
+  }
+}

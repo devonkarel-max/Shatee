@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A productivity task in the application.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The content of the task." },
+        "description": { "type": "string", "description": "Optional detailed description." },
+        "completed": { "type": "boolean", "description": "Whether the task is finished." },
+        "dueDate": { "type": "string", "description": "ISO string for the due date." },
+        "createdAt": { "type": "number", "description": "Unix timestamp of task creation." },
+        "userId": { "type": "string", "description": "Owner of the task." },
+        "sourceTaskId": { "type": "string", "description": "Optional reference to a template task." },
+        "panelId": { "type": "string", "description": "ID of the panel this task belongs to." },
+        "proofRequired": { "type": "boolean", "description": "Whether a photo proof is needed." },
+        "proofImageUrl": { "type": "string", "description": "URL of the submitted proof." },
+        "aiFeedback": { "type": "string", "description": "AI-generated feedback on the proof." },
+        "audioUrl": { "type": "string", "description": "URL to audio feedback." }
+      },
+      "required": ["text", "completed", "dueDate", "createdAt", "userId"]
+    },
+    "TaskPanel": {
+      "title": "TaskPanel",
+      "description": "A grouping for tasks (e.g., Morning Routine).",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Panel title." },
+        "userId": { "type": "string", "description": "Owner of the panel." },
+        "order": { "type": "number", "description": "Display order." },
+        "createdAt": { "type": "number", "description": "Creation timestamp." },
+        "color": { "type": "string", "enum": ["gray", "blue", "red"], "description": "Theme color." },
+        "tasks": { "type": "array", "items": { "type": "string" }, "description": "Ordered task IDs in this panel." }
+      },
+      "required": ["title", "userId", "order", "createdAt", "tasks"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "A conversation session.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Chat title." },
+        "userId": { "type": "string", "description": "Owner of the chat." },
+        "createdAt": { "type": "number", "description": "Creation timestamp." },
+        "lastMessageAt": { "type": "number", "description": "Last message timestamp." }
+      },
+      "required": ["title", "userId", "createdAt", "lastMessageAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message in a chat.",
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string", "description": "ID of the parent chat." },
+        "userId": { "type": "string", "description": "Owner of the message." },
+        "role": { "type": "string", "enum": ["user", "assistant"], "description": "Sender role." },
+        "content": { "type": "string", "description": "Message content." },
+        "timestamp": { "type": "number", "description": "Creation timestamp." },
+        "suggestedTask": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "description": { "type": "string" },
+            "status": { "type": "string", "enum": ["suggested", "added"] }
+          },
+          "required": ["text", "status"]
+        }
+      },
+      "required": ["chatId", "userId", "role", "content", "timestamp"]
+    },
+    "Routine": {
+      "title": "Routine",
+      "description": "User routine settings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner of the routine." },
+        "type": { "type": "string", "enum": ["morning", "evening"], "description": "Routine type." },
+        "taskIds": { "type": "array", "items": { "type": "string" }, "description": "Ordered task IDs." },
+        "updatedAt": { "type": "number", "description": "Last update timestamp." }
+      },
+      "required": ["userId", "type", "taskIds", "updatedAt"]
+    },
+    "UserSettings": {
+      "title": "User Settings",
+      "description": "Private settings for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "geminiApiKey": { "type": "string", "description": "Encrypted or plain user provided API key." },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "tasks": { "schema": "Task", "description": "Individual and scheduled tasks." },
+    "panels": { "schema": "TaskPanel", "description": "Task categories/panels." },
+    "chats": { "schema": "Chat", "description": "Conversation sessions." },
+    "messages": { "schema": "Message", "description": "Chat messages history." },
+    "routines": { "schema": "Routine", "description": "Morning and evening routine definitions." },
+    "userSettings": { "schema": "UserSettings", "description": "Private configuration per user." }
+  }
+}
