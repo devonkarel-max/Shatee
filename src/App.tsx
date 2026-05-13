@@ -906,7 +906,7 @@ export default function App() {
   useEffect(() => {
     const SpeechRecognitionClass = (window as unknown as { SpeechRecognition: unknown }).SpeechRecognition || (window as unknown as { webkitSpeechRecognition: unknown }).webkitSpeechRecognition;
     if (SpeechRecognitionClass) {
-      addMicLog("Příprava pomocné detekce");
+      addMicLog("Preparing auxiliary detection");
       recognitionRef.current = new (SpeechRecognitionClass as { new(): unknown })();
       const recognition = recognitionRef.current as { 
         continuous: boolean, 
@@ -940,7 +940,7 @@ export default function App() {
       recognition.onstart = () => {
         isRecognitionActiveRef.current = true;
         setIsRecording(true);
-        addMicLog("POSLOUCHÁM");
+        addMicLog("LISTENING");
       };
 
       recognition.onend = () => {
@@ -1489,7 +1489,7 @@ export default function App() {
               <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/20">
                 <Zap size={32} className="text-white fill-current translate-x-0.5" />
               </div>
-              <h1 className="text-5xl font-black tracking-tighter text-white">Shate</h1>
+              <h1 className="text-3xl font-black tracking-tighter text-white">Shate</h1>
             </div>
             <p className="text-2xl font-bold leading-tight max-w-sm">
               The future of your <span className="text-blue-500">productivity</span> starts with a morning routine.
@@ -1927,7 +1927,7 @@ export default function App() {
               </div>
 
               <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory custom-scrollbar -mx-6 px-6 scroll-smooth">
-                {/* Panel 1: Dnešní úkoly */}
+                {/* Panel 1: Today's Tasks */}
                 <motion.div 
                   layoutId="panel-today"
                   className="min-w-[280px] aspect-[5/8] snap-center flex flex-col group"
@@ -1975,7 +1975,7 @@ export default function App() {
                   </div>
                 </motion.div>
 
-                {/* Panel 2: Ranní rutina */}
+                {/* Panel 2: Morning Routine */}
                 <motion.div 
                   layoutId="panel-morning"
                   className="min-w-[280px] aspect-[5/8] snap-center flex flex-col group/r"
@@ -2687,7 +2687,7 @@ export default function App() {
                       <button 
                         onClick={(e) => { e.stopPropagation(); setIsChatMode(false); }}
                         className="p-2 hover:bg-white/10 rounded-xl text-zinc-500 hover:text-white transition-all"
-                        title="Zavřít"
+                        title="Close"
                       >
                         <X size={16} />
                       </button>
@@ -2700,7 +2700,7 @@ export default function App() {
                 {messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center opacity-10 py-12 text-center">
                     <History size={40} className="mb-3 text-white" />
-                    <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white">Začněte konverzaci</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white">Start a conversation</p>
                   </div>
                 ) : (
                 <div className={`space-y-6 ${showFullChat ? 'pb-44' : 'pb-2'}`}>
@@ -2791,7 +2791,7 @@ export default function App() {
                               whileTap={{ scale: 0.9 }}
                               onClick={() => speak(m.content)}
                               className="p-1 w-6 h-6 bg-zinc-900 border border-white/10 rounded-lg text-zinc-500 hover:text-white shadow-xl flex items-center justify-center"
-                              title="Přehrát znovu"
+                              title="Play again"
                             >
                               <Volume2 size={10} />
                             </motion.button>
@@ -2809,7 +2809,7 @@ export default function App() {
                                 className="text-[9px] uppercase font-black tracking-widest text-blue-400 flex items-center gap-1.5 ml-1 mb-1"
                               >
                                 <Search size={8} /> 
-                                Hledání...
+                                Searching...
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -2863,14 +2863,14 @@ export default function App() {
                   className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition-all shadow-xl shadow-black/20 ${activeTab === 'today' ? 'bg-white text-zinc-950 scale-[1.02]' : 'text-zinc-500 bg-zinc-900/50 border border-white/5 hover:bg-white/5'}`}
                 >
                   <Calendar size={18} strokeWidth={2.5} />
-                  <span className="text-[8px] font-black uppercase mt-1 tracking-tighter">Dnes</span>
+                  <span className="text-[8px] font-black uppercase mt-1 tracking-tighter">Today</span>
                 </button>
                 <button 
                   onClick={() => setActiveTab('tasks')}
                   className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition-all shadow-xl shadow-black/20 ${activeTab === 'tasks' ? 'bg-white text-zinc-950 scale-[1.02]' : 'text-zinc-500 bg-zinc-900/50 border border-white/5 hover:bg-white/5'}`}
                 >
                   <LayoutGrid size={18} strokeWidth={2.5} />
-                  <span className="text-[8px] font-black uppercase mt-1 tracking-tighter">Úkoly</span>
+                  <span className="text-[8px] font-black uppercase mt-1 tracking-tighter">Tasks</span>
                 </button>
               </motion.div>
             ) : (
@@ -2907,7 +2907,7 @@ export default function App() {
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder="Napište Shate..."
+                    placeholder="Message Shate..."
                     className="w-full bg-transparent text-sm focus:outline-none placeholder:text-zinc-600 font-bold transition-all"
                   />
                 </div>
@@ -3037,14 +3037,14 @@ export default function App() {
                           transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
                           className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full"
                         />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 animate-pulse">Analyzuji důkaz...</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 animate-pulse">Analyzing proof...</p>
                       </>
                     ) : (
                       <>
                         <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-zinc-400 group-hover:text-blue-400 group-hover:scale-110 transition-all">
                           <Plus size={24} />
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Pořídit nebo vybrat fotku</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Capture or select photo</p>
                       </>
                     )}
                   </div>
@@ -3055,7 +3055,7 @@ export default function App() {
                   onClick={() => setProofTask(null)}
                   className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-zinc-600 hover:text-white transition-colors"
                 >
-                  Zrušit
+                  Cancel
                 </button>
               </div>
             </motion.div>
@@ -3083,7 +3083,7 @@ export default function App() {
             >
               <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-8" />
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-[12px] font-black uppercase tracking-[0.3em] text-blue-500">Upravit úkol</h2>
+                <h2 className="text-[12px] font-black uppercase tracking-[0.3em] text-blue-500">Edit Task</h2>
                 <button onClick={() => setEditingTaskId(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors">
                   <X size={20} className="text-zinc-500" />
                 </button>
@@ -3091,7 +3091,7 @@ export default function App() {
               
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-600 pl-4">Název úkolu</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-600 pl-4">Task name</p>
                   <input 
                     type="text"
                     value={tempEditingTask.text}
@@ -3108,7 +3108,7 @@ export default function App() {
                     <Zap size={16} className={tempEditingTask.proofRequired ? 'text-blue-400' : 'text-zinc-600'} />
                     <div className="text-left">
                       <p className="text-[10px] font-black uppercase tracking-widest text-white">PROVE IT</p>
-                      <p className="text-[9px] text-zinc-500 font-bold uppercase mt-0.5 whitespace-nowrap">Vyžadovat fotku pro splnění</p>
+                      <p className="text-[9px] text-zinc-500 font-bold uppercase mt-0.5 whitespace-nowrap">Require photo for completion</p>
                     </div>
                   </div>
                   <div className={`w-10 h-6 rounded-full p-1 transition-all ${tempEditingTask.proofRequired ? 'bg-blue-600' : 'bg-zinc-800'}`}>
@@ -3125,7 +3125,7 @@ export default function App() {
                     className="w-full p-4 bg-blue-600/10 border border-blue-600/20 rounded-2xl flex items-center justify-center gap-3 text-blue-400 font-black text-[10px] uppercase tracking-widest hover:bg-blue-600/20 transition-all border-dashed"
                   >
                     <Volume2 size={16} />
-                    Přehrát audio komentář
+                    Play audio commentary
                   </button>
                 )}
 
@@ -3140,7 +3140,7 @@ export default function App() {
                     }}
                     className="flex-1 h-14 bg-white text-zinc-950 text-[11px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-xl active:scale-95 transition-all"
                   >
-                    Uložit změny
+                    Save Changes
                   </button>
                   <button 
                     onClick={() => {
@@ -3384,7 +3384,7 @@ export default function App() {
                   <button 
                     onClick={login}
                     disabled={isLoggingIn}
-                    className="w-full h-16 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all rounded-3xl text-[10px]"
+                    className="w-full h-16 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all rounded-2xl text-[10px]"
                   >
                     <GoogleIcon />
                     {isLoggingIn ? 'Logging in...' : 'Sign in with Google'}
@@ -3401,7 +3401,7 @@ export default function App() {
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
                         <h2 className="text-xl font-black uppercase tracking-widest">Online</h2>
                      </div>
-                     <p className="text-sm text-zinc-500 font-medium">Jste synchronizováni. Všechny vaše rutiny a úkoly jsou v bezpečí.</p>
+                     <p className="text-sm text-zinc-500 font-medium">You're synced. All your routines and tasks are safe.</p>
                   </div>
 
                   <div className={`p-6 rounded-[2rem] border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-zinc-50 border-zinc-200'} flex items-center gap-4`}>
