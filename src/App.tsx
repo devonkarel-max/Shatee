@@ -1812,7 +1812,7 @@ export default function App() {
 
 
       {!user ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden bg-black">
+        <div className="flex-1 flex flex-col items-center justify-start py-12 px-8 text-center relative overflow-y-auto bg-black custom-scrollbar">
           {/* Animated Background Elements */}
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-600/10 blur-[120px] rounded-full animate-pulse [animation-delay:2s]" />
@@ -1824,13 +1824,8 @@ export default function App() {
               transition={{ duration: 0.8, ease: "easeOut" }}
               className="space-y-6"
             >
-              <div className="w-24 h-24 bg-white/[0.03] border border-white/10 shadow-2xl rounded-3xl flex items-center justify-center mb-8 mx-auto relative group overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <Zap size={48} className="text-white fill-white/10 relative z-10" />
-              </div>
-              
-              <div className="space-y-2">
-                <h2 className="text-5xl font-black uppercase tracking-tighter text-white inline-block relative">
+              <div className="space-y-2 pt-8">
+                <h2 className="text-5xl font-black tracking-tighter text-white inline-block relative">
                   Shate
                   <span className="absolute -top-1 -right-4 w-2 h-2 bg-blue-500 rounded-full animate-ping" />
                 </h2>
@@ -1853,7 +1848,7 @@ export default function App() {
               ].map((feature, i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] border border-white/5 rounded-2xl">
                   <feature.icon size={14} className={feature.color} />
-                  <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400">{feature.text}</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.1em] text-zinc-400">{feature.text}</span>
                 </div>
               ))}
             </motion.div>
@@ -1866,12 +1861,12 @@ export default function App() {
             >
               <button 
                 onClick={login} 
-                className="w-full h-16 bg-white text-zinc-950 font-black uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:bg-zinc-100 transition-all active:scale-[0.98] rounded-3xl text-[11px] group"
+                className="w-full h-16 bg-white text-zinc-950 font-black flex items-center justify-center gap-4 shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:bg-zinc-100 transition-all active:scale-[0.98] rounded-2xl text-xs group"
               >
                 <div className="w-6 h-6 bg-zinc-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <GoogleIcon />
                 </div>
-                <span>Vstoupit do Shate</span>
+                <span>Sign in with Google</span>
               </button>
               <p className="mt-6 text-[9px] font-bold text-zinc-700 uppercase tracking-widest">
                 Protected by secure multi-factor auth
