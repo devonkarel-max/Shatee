@@ -1,0 +1,17 @@
+{
+  "name": "Shate AI Assistant",
+  "short_name": "Shate",
+  "description": "A high-performance personal assistant and routine optimizer with real-time AI insights, voice processing, and intelligent habit tracking.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

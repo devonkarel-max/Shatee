@@ -157,72 +157,72 @@ const FeatureItem = ({ icon, title, desc, theme }: { icon: React.ReactNode, titl
   </div>
 );
 
-const SYSTEM_PROMPT = `Jsi Shate, minimalistický a efektivní osobní asistent. Tvým úkolem je pomáhat s organizací času a správou ranních a večerních rutin.
+const SYSTEM_PROMPT = `You are Shate, a minimalist and efficient personal assistant. Your task is to help with time organization and management of morning and evening routines.
 
-INSTRUKCE PRO ÚKOLY A RUTINY:
-1. Úkoly mají nyní různé typy:
-   - "normal": Běžný úkol.
-   - "prove_it": Úkol vyžadující fotku jako důkaz.
-   - "text_input": Úkol vyžadující textovou odpověď na konkrétní otázku.
-2. Pokud uživatel chce vytvořit úkol, zavolej "suggest_task" nebo "create_task". 
-3. Pro "text_input" úkoly VŽDY specifikuj pole "question" (otázka, na kterou se uživatel při plnění odpoví).
-4. Rutiny (ranní/večerní) jsou seznamy úkolů. Můžeš je prohlížet (get_routines) a upravovat (update_routine).
-5. Pokud uživatel chce přidat úkol do rutiny, musíš nejprve zajistit, aby úkol existoval (vytvoř ho, pokud neexistuje).
-6. Úkoly se nesmí duplikovat. Pokud úkol se stejným názvem už existuje, použij ho.
-7. Když upravuješ rutinu, pošli celý nový seznam názvů úkolů v požadovaném pořadí.
+TASK AND ROUTINE INSTRUCTIONS:
+1. Tasks now have different types:
+   - "normal": Standard task.
+   - "prove_it": Task requiring a photo as proof.
+   - "text_input": Task requiring a text answer to a specific question.
+2. If the user wants to create a task, call "suggest_task" or "create_task". 
+3. For "text_input" tasks ALWAYS specify the "question" field.
+4. Routines (morning/evening) are lists of tasks. You can view (get_routines) and update them (update_routine).
+5. If the user wants to add a task to a routine, first ensure the task exists (create it if not).
+6. Tasks must not be duplicated. If a task with the same name already exists, use it.
+7. To update a routine, send the full new list of task titles in the desired order.
 
-Pravidla komunikace:
-- Mluv česky, stručně a lidsky.
-- Čas a datum zmiňuj jen na vyžádání.
-- Buď proaktivní, ale nevtíravý.`;
+Communication rules:
+- Speak naturally and concisely in English.
+- Only mention time and date when requested.
+- Be proactive but non-intrusive.`;
 
 const TOOLS = [
   {
     functionDeclarations: [
       {
         name: "suggest_task",
-        description: "Navrhne uživateli vytvoření úkolu. Zobrazí interaktivní kartu v chatu.",
+        description: "Suggests task creation to the user. Displays an interactive card in chat.",
         parameters: {
           type: Type.OBJECT,
           properties: {
-            text: { type: Type.STRING, description: "Název úkolu" },
-            description: { type: Type.STRING, description: "Popis úkolu" },
-            taskType: { type: Type.STRING, enum: ["normal", "prove_it", "text_input"], description: "Typ úkolu" },
-            question: { type: Type.STRING, description: "Otázka pro text_input úkol" }
+            text: { type: Type.STRING, description: "Task name" },
+            description: { type: Type.STRING, description: "Task description" },
+            taskType: { type: Type.STRING, enum: ["normal", "prove_it", "text_input"], description: "Task type" },
+            question: { type: Type.STRING, description: "Question for text_input task" }
           },
           required: ["text", "taskType"]
         }
       },
       {
         name: "create_task",
-        description: "Přímo vytvoří úkol v seznamu uživatele.",
+        description: "Directly creates a task in the user's list.",
         parameters: {
           type: Type.OBJECT,
           properties: {
-            text: { type: Type.STRING, description: "Název úkolu" },
-            description: { type: Type.STRING, description: "Popis úkolu" },
-            taskType: { type: Type.STRING, enum: ["normal", "prove_it", "text_input"], description: "Typ úkolu" },
-            question: { type: Type.STRING, description: "Otázka pro text_input úkol" }
+            text: { type: Type.STRING, description: "Task name" },
+            description: { type: Type.STRING, description: "Task description" },
+            taskType: { type: Type.STRING, enum: ["normal", "prove_it", "text_input"], description: "Task type" },
+            question: { type: Type.STRING, description: "Question for text_input task" }
           },
           required: ["text", "taskType"]
         }
       },
       {
         name: "get_routines",
-        description: "Získá aktuálně nastavené rutiny (ranní a večerní) a seznam všech úkolů uživatele.",
+        description: "Gets currently set routines (morning and evening) and the list of all user tasks.",
         parameters: { type: Type.OBJECT, properties: {} }
       },
       {
         name: "update_routine",
-        description: "Aktualizuje ranní nebo večerní rutinu. Přenastaví seznam úkolů v daném pořadí.",
+        description: "Updates morning or evening routine. Resets the task list in the given order.",
         parameters: {
           type: Type.OBJECT,
           properties: {
-            type: { type: Type.STRING, enum: ["morning", "evening"], description: "Typ rutiny" },
+            type: { type: Type.STRING, enum: ["morning", "evening"], description: "Routine type" },
             taskTexts: { 
               type: Type.ARRAY, 
               items: { type: Type.STRING }, 
-              description: "Seznam názvů úkolů v pořadí, jak mají jít po sobě." 
+              description: "List of task titles in the order they should appear." 
             }
           },
           required: ["type", "taskTexts"]
@@ -335,14 +335,14 @@ const TaskCard = ({
                   <img src={task.proofImageUrl} alt="Proof" className="w-10 h-10 rounded-md object-cover border border-white/10 shrink-0" />
                 )}
                 <div className="flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">Zpětná vazba od Shate</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">Feedback from Shate</p>
                   <p className="text-[11px] text-zinc-300 leading-relaxed font-medium italic">"{task.aiFeedback}"</p>
                 </div>
               </div>
             )}
             {task.answers && task.answers.length > 0 && (
               <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Historie odpovědí</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Response history</p>
                 <div className="space-y-1.5">
                   {task.answers.map(ans => (
                     <div key={ans.id} className="p-2.5 rounded-xl bg-white/5 border border-white/5">
@@ -358,7 +358,7 @@ const TaskCard = ({
 
             <div className="mt-3 pt-3 border-t border-white/5 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Plánování</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Planning</p>
                 <div className="flex gap-1.5">
                   {(['daily', 'weekly', 'interval'] as const).map(type => (
                     <button
@@ -379,7 +379,7 @@ const TaskCard = ({
                           : 'bg-white/5 text-zinc-600 hover:text-zinc-400'
                       }`}
                     >
-                      {type === 'daily' ? 'Denně' : type === 'weekly' ? 'Týdně' : 'Interval'}
+                      {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Interval'}
                     </button>
                   ))}
                 </div>
@@ -388,7 +388,7 @@ const TaskCard = ({
               {task.schedule?.type === 'weekly' && (
                 <div className="flex justify-between gap-1">
                   {[1,2,3,4,5,6,0].map(d => {
-                    const labels = ['Ne','Po','Út','St','Čt','Pá','So'];
+                    const labels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
                     const isSelected = task.schedule?.days?.includes(d);
                     return (
                       <button
@@ -416,7 +416,7 @@ const TaskCard = ({
 
               {task.schedule?.type === 'interval' && (
                 <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
-                  <span className="text-[10px] font-bold text-zinc-400">Opakovat každé</span>
+                  <span className="text-[10px] font-bold text-zinc-400">Repeat every</span>
                   <div className="flex items-center gap-2">
                      <input 
                        type="number"
@@ -432,7 +432,7 @@ const TaskCard = ({
                        }}
                        className="w-12 bg-zinc-950 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-bold text-center"
                      />
-                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">dny</span>
+                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">days</span>
                   </div>
                 </div>
               )}
@@ -568,7 +568,7 @@ export default function App() {
 
   const syncRoutineToAgenda = async (type: 'morning' | 'evening', taskIds: string[]) => {
     if (!user || panels.length === 0) return;
-    const panelName = type === 'morning' ? 'Ranní rutina' : 'Večerní rutina';
+    const panelName = type === 'morning' ? 'Morning Routine' : 'Evening Routine';
     const panel = panels.find(p => p.title === panelName);
     if (!panel) return;
 
@@ -705,9 +705,9 @@ export default function App() {
       // Seed initial panels if empty as requested (3 panels)
       if (p.length === 0 && user) {
         const initialPanels = [
-          { title: 'Dnešní úkoly', color: 'gray', order: 0 },
-          { title: 'Ranní rutina', color: 'blue', order: 1 },
-          { title: 'Večerní rutina', color: 'red', order: 2 }
+          { title: 'Today\'s Tasks', color: 'gray', order: 0 },
+          { title: 'Morning Routine', color: 'blue', order: 1 },
+          { title: 'Evening Routine', color: 'red', order: 2 }
         ];
         
         for (const ip of initialPanels) {
@@ -796,7 +796,7 @@ export default function App() {
 
   const testGeminiKey = async () => {
     if (!tempApiKey.trim()) {
-      setTestResult({ success: false, message: 'Prosím zadejte klíč.' });
+      setTestResult({ success: false, message: 'Please enter a key.' });
       return;
     }
     
@@ -818,13 +818,13 @@ export default function App() {
       
       const data = await resp.json();
       if (resp.ok && data.text) {
-        setTestResult({ success: true, message: 'Klíč je platný a funkční!' });
+        setTestResult({ success: true, message: 'Key is valid and functional!' });
       } else {
-        const errorMsg = data.error || 'Chyba při komunikaci s API.';
-        setTestResult({ success: false, message: `Chyba: ${errorMsg}` });
+        const errorMsg = data.error || 'Error communicating with API.';
+        setTestResult({ success: false, message: `Error: ${errorMsg}` });
       }
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-      setTestResult({ success: false, message: `Neočekávaná chyba: ${error.message || 'Připojení selhalo'}` });
+      setTestResult({ success: false, message: `Unexpected error: ${error.message || 'Connection failed'}` });
     } finally {
       setIsTestingKey(false);
     }
@@ -921,7 +921,7 @@ export default function App() {
       };
       recognition.continuous = false;
       recognition.interimResults = true;
-      recognition.lang = 'cs-CZ';
+      recognition.lang = 'en-US';
 
       recognition.onresult = (event: unknown) => {
         let interimTranscript = '';
@@ -973,16 +973,16 @@ export default function App() {
     setCurrentSpeakingText(cleanText);
     
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'cs-CZ';
+    utterance.lang = 'en-US';
     utterance.rate = 1.7; // Fast rate as requested
     
     utterance.onstart = () => {
-      addMicLog("Hlasový výstup spuštěn");
+      addMicLog("Voice output started");
       setIsSpeaking(true);
       playSound('start_reply');
       // Ensure mic is strictly stopped while speaking to prevent echo
       if (isRecognitionActiveRef.current) {
-        addMicLog("Vynucené vypnutí mikrofonu");
+        addMicLog("Forced microphone shutdown");
         if (recognitionRef.current) {
           try {
             recognitionRef.current.stop();
@@ -1010,7 +1010,7 @@ export default function App() {
     };
 
     utterance.onend = () => {
-      addMicLog("Hlasový výstup dokončen");
+      addMicLog("Voice output finished");
       setIsSpeaking(false);
       setSpokenWordRange(null);
       setCurrentSpeakingText('');
@@ -1145,14 +1145,14 @@ export default function App() {
               args.taskType || 'normal', 
               args.question
             );
-            assistantMsgContent += `\n\n✅ Úkol "${args.text}" byl přidán.`;
+            assistantMsgContent += `\n\n✅ Task "${args.text}" was added.`;
           } else if (name === 'get_routines') {
             const routinesData = routines.map(r => ({
               type: r.type,
               tasks: r.taskIds.map(id => tasks.find(t => t.id === id)?.text).filter(Boolean)
             }));
             const allTasks = tasks.filter(t => !t.sourceTaskId).map(t => t.text);
-            assistantMsgContent += `\n\n[SYSTÉMOVÁ INFORMACE]: Aktuální rutiny: ${JSON.stringify(routinesData)}. Všechny úkoly v knihovně: ${JSON.stringify(allTasks)}.`;
+            assistantMsgContent += `\n\n[SYSTEM INFORMATION]: Current routines: ${JSON.stringify(routinesData)}. All library tasks: ${JSON.stringify(allTasks)}.`;
           } else if (name === 'update_routine') {
             const { type, taskTexts } = args;
             const newTaskIds = [];
@@ -1175,14 +1175,14 @@ export default function App() {
                 updatedAt: Date.now()
               });
             }
-            assistantMsgContent += `\n\n✅ Rutina "${type === 'morning' ? 'ranní' : 'večerní'}" byla aktualizována.`;
+            assistantMsgContent += `\n\n✅ Routine "${type === 'morning' ? 'morning' : 'evening'}" was updated.`;
           }
         }
       }
 
       const assistantMessage: Omit<Message, 'id'> = {
         role: 'assistant',
-        content: assistantMsgContent || (suggestedTask ? "Navrhuji tento úkol:" : "Omlouvám se, něco se pokazilo."),
+        content: assistantMsgContent || (suggestedTask ? "I suggest this task:" : "Sorry, something went wrong."),
         timestamp: Date.now(),
         userId: user.uid,
         chatId: chatId!,
@@ -1492,7 +1492,7 @@ export default function App() {
               <h1 className="text-5xl font-black tracking-tighter text-white">Shate</h1>
             </div>
             <p className="text-2xl font-bold leading-tight max-w-sm">
-              Budoucnost vaší <span className="text-blue-500">produktivity</span> začíná ranní rutinou.
+              The future of your <span className="text-blue-500">productivity</span> starts with a morning routine.
             </p>
           </div>
           
@@ -1500,20 +1500,20 @@ export default function App() {
             <FeatureItem 
               theme={theme}
               icon={<Calendar size={20}/>} 
-              title="Chytré plánování" 
-              desc="Shate rozumí vašemu dni a pomáhá vám efektivně rozložit úkoly mezi ranní a večerní bloky." 
+              title="Smart planning" 
+              desc="Shate understands your day and helps you efficiently balance tasks between morning and evening blocks." 
             />
             <FeatureItem 
               theme={theme}
               icon={<Zap size={20}/>} 
-              title="AI Ověření" 
-              desc="Funkce 'Prove It' vyžaduje fotku jako důkaz splnění úkolu. Shate ji pomocí AI zkontroluje." 
+              title="AI Verification" 
+              desc="The 'Prove It' feature requires a photo as proof of completion. Shate checks it using AI." 
             />
             <FeatureItem 
               theme={theme}
               icon={<LayoutGrid size={20}/>} 
-              title="Rutiny" 
-              desc="Minimalistická správa ranních a večerních rutin, které vás udrží v rytmu po celý den." 
+              title="Routines" 
+              desc="Minimalist management of morning and evening routines to keep you in sync all day." 
             />
           </div>
         </div>
@@ -1545,7 +1545,7 @@ export default function App() {
             <button 
               onClick={() => setShowHistory(true)}
               className="p-2.5 hover:bg-white/5 rounded-xl text-zinc-500 hover:text-white transition-all flex items-center gap-2"
-              title="Historie chatů"
+              title="Chat history"
             >
               <History size={18} />
             </button>
@@ -1573,7 +1573,7 @@ export default function App() {
                           <div className="w-9 h-9 rounded-xl bg-blue-600/10 flex items-center justify-center">
                             <Settings size={18} className="text-blue-400" />
                           </div>
-                          <h2 className={`text-lg font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-zinc-900'}`}>Nastavení</h2>
+                          <h2 className={`text-lg font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-zinc-900'}`}>Settings</h2>
                         </div>
                         <button 
                           onClick={() => setShowSettings(false)}
@@ -1601,8 +1601,8 @@ export default function App() {
                         <div className={`p-4 border rounded-xl space-y-3 ${theme === 'dark' ? 'bg-zinc-900 border-white/5' : 'bg-zinc-50 border-zinc-100'}`}>
                           <div className="flex items-center justify-between">
                             <div className="flex flex-col">
-                              <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>Vlastní Gemini API Klíč</span>
-                              <span className="text-[8px] text-zinc-500 mt-0.5">Volitelné - Shate má vestavěný klíč</span>
+                              <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>Custom Gemini API Key</span>
+                              <span className="text-[8px] text-zinc-500 mt-0.5">Optional - Shate has a built-in key</span>
                             </div>
                             <Zap size={14} className="text-amber-400" />
                           </div>
@@ -1628,7 +1628,7 @@ export default function App() {
                                     : 'bg-blue-600 text-white hover:bg-blue-500 active:scale-95'
                                 }`}
                               >
-                                {isSavingSettings ? 'Ukládám...' : 'Uložit'}
+                                {isSavingSettings ? 'Saving...' : 'Save'}
                               </button>
                               <button 
                                 onClick={(e) => { e.stopPropagation(); testGeminiKey(); }}
@@ -1637,7 +1637,7 @@ export default function App() {
                                   isTestingKey ? 'bg-zinc-800 text-zinc-600' : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white active:scale-95'
                                 }`}
                               >
-                                {isTestingKey ? 'Prověřuji...' : 'Otestovat'}
+                                {isTestingKey ? 'Testing...' : 'Test'}
                               </button>
                             </div>
 
@@ -1654,13 +1654,13 @@ export default function App() {
                               </motion.div>
                             )}
 
-                            <p className="text-[8px] text-zinc-600 leading-tight">Vložte klíč jako prostý text. Pokud jej nahrajete jako soubor, nebude fungovat.</p>
+                            <p className="text-[8px] text-zinc-600 leading-tight">Paste the key as plain text. If you upload it as a file, it won't work.</p>
                           </div>
 
                         </div>
 
                         <div className={`flex items-center justify-between p-3.5 border rounded-xl ${theme === 'dark' ? 'bg-zinc-900 border-white/5' : 'bg-zinc-50 border-zinc-100'}`}>
-                          <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>Audio výstup</span>
+                          <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>Audio output</span>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setIsSoundEnabled(!isSoundEnabled); }}
                             className={`w-8 h-4 rounded-full relative transition-all ${isSoundEnabled ? 'bg-blue-600' : 'bg-zinc-300 dark:bg-zinc-800'}`}
@@ -1670,7 +1670,7 @@ export default function App() {
                         </div>
 
                         <div className={`flex items-center justify-between p-3.5 border rounded-xl ${theme === 'dark' ? 'bg-zinc-900 border-white/5' : 'bg-zinc-50 border-zinc-100'}`}>
-                          <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>Světlý režim</span>
+                          <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>Light mode</span>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setTheme(theme === 'dark' ? 'light' : 'dark'); }}
                             className={`w-8 h-4 rounded-full relative transition-all ${theme === 'light' ? 'bg-blue-400' : 'bg-zinc-300 dark:bg-zinc-800'}`}
@@ -1684,7 +1684,7 @@ export default function App() {
                           className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-center gap-2 text-red-500 font-bold text-[11px] uppercase tracking-widest hover:bg-red-500/20 transition-all active:scale-95"
                         >
                           <LogOut size={14} />
-                          Odhlásit se
+                          Log Out
                         </button>
                       </div>
                     </div>
@@ -1721,7 +1721,7 @@ export default function App() {
                   <div className="w-5 h-5 rounded-md bg-blue-500/20 flex items-center justify-center">
                     <History size={12} className="text-blue-400" />
                   </div>
-                  <h2 className="text-[11px] font-black uppercase tracking-widest text-zinc-400">Historie</h2>
+                  <h2 className="text-[11px] font-black uppercase tracking-widest text-zinc-400">History</h2>
                 </div>
                 <button 
                   onClick={() => setShowHistory(false)}
@@ -1736,7 +1736,7 @@ export default function App() {
                   {chats.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 opacity-20 group">
                       <MessagesSquare size={24} className="mb-2 group-hover:scale-110 transition-transform" />
-                      <p className="text-[10px] uppercase font-black tracking-widest">Žádný chat</p>
+                      <p className="text-[10px] uppercase font-black tracking-widest">No chats</p>
                     </div>
                   ) : (
                     chats.map(chat => (
@@ -1756,13 +1756,13 @@ export default function App() {
                         >
                           <div className="flex justify-between items-start mb-1">
                             <p className={`text-[11px] font-bold truncate pr-6 ${activeChatId === chat.id ? 'text-white' : 'text-zinc-400'}`}>
-                              {chat.title || "Bezejmenný chat"}
+                              {chat.title || "Untitled chat"}
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <div className={`w-1 h-1 rounded-full ${activeChatId === chat.id ? 'bg-blue-400' : 'bg-zinc-700'}`} />
                             <p className="text-[8px] text-zinc-600 uppercase font-black tracking-wider">
-                              {new Date(chat.lastMessageAt).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })}
+                              {new Date(chat.lastMessageAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
                             </p>
                           </div>
                         </button>
@@ -1783,7 +1783,7 @@ export default function App() {
                     className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl flex items-center justify-center gap-2 text-white text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-blue-500/20"
                   >
                     <Plus size={14} strokeWidth={3} />
-                    <span>Nový chat</span>
+                    <span>New chat</span>
                   </button>
                 </div>
 
@@ -1895,8 +1895,8 @@ export default function App() {
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
                 <div className="flex justify-between items-center mb-4 relative z-10">
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-500/50">Denní agenda</span>
-                    <span className="text-xs font-black tracking-tight text-white/90">Květen 2026</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-500/50">Daily agenda</span>
+                    <span className="text-xs font-black tracking-tight text-white/90">May 2026</span>
                   </div>
                   <div className="flex space-x-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
@@ -1904,7 +1904,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="grid grid-cols-7 gap-y-1 text-center relative z-10 pt-1">
-                  {['Po','Út','St','Čt','Pá','So','Ne'].map((d) => (
+                  {['Mo','Tu','We','Th','Fr','Sa','Su'].map((d) => (
                     <span key={d} className="text-[7px] font-black text-zinc-700 uppercase tracking-tighter mb-1">{d}</span>
                   ))}
                   {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
@@ -1933,7 +1933,7 @@ export default function App() {
                   className="min-w-[280px] aspect-[5/8] snap-center flex flex-col group"
                 >
                   <div className="flex justify-between items-center mb-5 px-3">
-                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-orange-500 transition-colors">DNES</h3>
+                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover:text-orange-500 transition-colors">TODAY</h3>
                      <button 
                         onClick={(e) => { e.stopPropagation(); setShowUnscheduledPicker(true); }}
                         className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-zinc-600 hover:text-white hover:bg-orange-600 transition-all active:scale-90"
@@ -1956,7 +1956,7 @@ export default function App() {
                           return (
                             <div className="h-full flex flex-col items-center justify-center opacity-10 py-10 scale-75">
                               <LayoutGrid size={60} strokeWidth={1} className="mb-4 text-orange-500" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.3em]">HOTOVO</p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.3em]">DONE</p>
                             </div>
                           );
                         }
@@ -1981,7 +1981,7 @@ export default function App() {
                   className="min-w-[280px] aspect-[5/8] snap-center flex flex-col group/r"
                 >
                   <div className="flex justify-between items-center mb-5 px-3">
-                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover/r:text-yellow-500 transition-colors">RANNÍ RUTINA</h3>
+                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover/r:text-yellow-500 transition-colors">MORNING ROUTINE</h3>
                      <button 
                         onClick={(e) => { e.stopPropagation(); setShowRoutinePicker('morning'); }}
                         className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-zinc-600 hover:text-white hover:bg-yellow-600 transition-all active:scale-90"
@@ -2002,7 +2002,7 @@ export default function App() {
                           return (
                             <div className="h-full flex flex-col items-center justify-center opacity-10 py-10 scale-75">
                               <Zap size={60} strokeWidth={1} className="mb-4 text-yellow-500" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.3em]">PRÁZDNÉ</p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.3em]">EMPTY</p>
                             </div>
                           );
                         }
@@ -2035,7 +2035,7 @@ export default function App() {
                             className="mt-4 w-full py-4 bg-yellow-600/10 hover:bg-yellow-600 text-yellow-500 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border border-yellow-500/20"
                           >
                             <Zap size={14} className="fill-current" />
-                            SPUSTIT
+                            START
                           </button>
                         );
                       }
@@ -2044,13 +2044,13 @@ export default function App() {
                   </div>
                 </motion.div>
 
-                {/* Panel 3: Večerní rutina */}
+                {/* Panel 3: Evening Routine */}
                 <motion.div 
                   layoutId="panel-evening"
                   className="min-w-[280px] aspect-[5/8] snap-center flex flex-col group/v"
                 >
                   <div className="flex justify-between items-center mb-5 px-3">
-                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover/v:text-indigo-500 transition-colors">VEČERNÍ RUTINA</h3>
+                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 group-hover/v:text-indigo-500 transition-colors">EVENING ROUTINE</h3>
                      <button 
                         onClick={(e) => { e.stopPropagation(); setShowRoutinePicker('evening'); }}
                         className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-zinc-600 hover:text-white hover:bg-indigo-600 transition-all active:scale-90"
@@ -2071,7 +2071,7 @@ export default function App() {
                           return (
                             <div className="h-full flex flex-col items-center justify-center opacity-10 py-10 scale-75">
                               <Moon size={60} strokeWidth={1} className="mb-4 text-indigo-500" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.3em]">PRÁZDNÉ</p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.3em]">EMPTY</p>
                             </div>
                           );
                         }
@@ -2104,7 +2104,7 @@ export default function App() {
                             className="mt-4 w-full py-4 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-500 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border border-indigo-500/20"
                           >
                             <Moon size={14} className="fill-current" />
-                            SPUSTIT
+                            START
                           </button>
                         );
                       }
@@ -2151,7 +2151,7 @@ export default function App() {
                               value={textAnswer}
                               onChange={(e) => setTextAnswer(e.target.value)}
                               autoFocus
-                              placeholder="Napište svou odpověď..."
+                              placeholder="Type your answer here..."
                               className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl p-4 pl-10 text-[13px] text-white placeholder:text-zinc-800 focus:outline-none focus:border-purple-500/20 transition-all font-medium tracking-tight h-32 resize-none"
                             />
                           </div>
@@ -2184,13 +2184,13 @@ export default function App() {
                             className="w-full py-5 bg-purple-600 disabled:bg-zinc-800/50 disabled:text-zinc-700 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
                           >
                             <Check size={16} strokeWidth={3} />
-                            POTVRDIT
+                            CONFIRM
                           </button>
                           <button 
                             onClick={() => setTextInputTask(null)}
                             className="w-full py-3 text-zinc-600 text-[8px] font-black uppercase tracking-widest hover:text-zinc-400 transition-colors"
                           >
-                            ZRUŠIT
+                            CANCEL
                           </button>
                         </div>
                       </div>
@@ -2232,13 +2232,13 @@ export default function App() {
                               >
                                 <Check size={32} className="text-white" strokeWidth={3} />
                               </motion.div>
-                              <h3 className="text-xl font-bold text-white mb-1">Skvělá práce!</h3>
-                              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] mb-12">Rutina je hotová</p>
+                              <h3 className="text-xl font-bold text-white mb-1">Great Job!</h3>
+                              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] mb-12">Routine completed</p>
                               <button 
                                 onClick={() => setActiveRoutineRun(null)}
                                 className="w-full py-5 bg-white text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
                               >
-                                ZPĚT DO MENU
+                                BACK TO MENU
                               </button>
                             </div>
                           );
@@ -2251,7 +2251,7 @@ export default function App() {
                         return (
                           <div className="flex-1 flex flex-col pt-4">
                             <div className="mb-10 px-2">
-                              <p className="text-[9px] font-black uppercase tracking-[0.4em] text-zinc-600 mb-2">KROK {routineStepIndex + 1} Z {uncompletedTaskIds.length}</p>
+                              <p className="text-[9px] font-black uppercase tracking-[0.4em] text-zinc-600 mb-2">STEP {routineStepIndex + 1} OF {uncompletedTaskIds.length}</p>
                               <div className="h-1 bg-zinc-800/50 rounded-full overflow-hidden">
                                 <motion.div 
                                   className="h-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]"
@@ -2277,7 +2277,7 @@ export default function App() {
                                       value={routineAnswer}
                                       onChange={(e) => setRoutineAnswer(e.target.value)}
                                       autoFocus
-                                      placeholder="Napište svou odpověď..."
+                                      placeholder="Type your answer here..."
                                       className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl p-4 pl-10 text-[13px] text-white placeholder:text-zinc-800 focus:outline-none focus:border-blue-500/20 transition-all font-medium tracking-tight h-24 resize-none"
                                     />
                                   </div>
@@ -2312,13 +2312,13 @@ export default function App() {
                                 className="w-full py-5 bg-blue-600 disabled:bg-zinc-800/50 disabled:text-zinc-700 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
                               >
                                 <Check size={16} strokeWidth={3} />
-                                HOTOVO
+                                DONE
                               </button>
                               <button 
                                 onClick={() => setActiveRoutineRun(null)}
                                 className="w-full py-3 text-zinc-600 text-[8px] font-black uppercase tracking-widest hover:text-zinc-400 transition-colors"
                               >
-                                PŘERUŠIT RUTINU
+                                ABORT ROUTINE
                               </button>
                             </div>
                           </div>
@@ -2350,7 +2350,7 @@ export default function App() {
                       <div className="px-8 pb-6 flex justify-between items-center">
                         <div>
                           <h2 className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-500">Pick to Agenda</h2>
-                          <p className="text-sm font-bold text-white tracking-tight">Knihovna konceptů</p>
+                          <p className="text-sm font-bold text-white tracking-tight">Concepts Library</p>
                         </div>
                         <button 
                           onClick={() => setShowUnscheduledPicker(false)}
@@ -2364,7 +2364,7 @@ export default function App() {
                         {tasks.filter(t => !t.sourceTaskId).length === 0 ? (
                           <div className="py-20 text-center opacity-40">
                             <LayoutGrid size={40} className="mx-auto mb-4 text-zinc-700" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Žádné koncepty k dispozici</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">No concepts available</p>
                           </div>
                         ) : (
                           tasks.filter(t => !t.sourceTaskId)
@@ -2418,13 +2418,13 @@ export default function App() {
                   onClick={() => setTasksView('tasks')}
                   className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${tasksView === 'tasks' ? 'bg-white text-zinc-950 shadow-lg' : 'text-zinc-600'}`}
                 >
-                  Úkoly
+                  Tasks
                 </button>
                 <button 
                   onClick={() => setTasksView('routines')}
                   className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${tasksView === 'routines' ? 'bg-white text-zinc-950 shadow-lg' : 'text-zinc-600'}`}
                 >
-                  Rutiny
+                  Routines
                 </button>
               </div>
 
@@ -2433,7 +2433,7 @@ export default function App() {
                   <div className="flex justify-between items-center bg-zinc-950/20 p-4 rounded-3xl border border-white/5">
                     <div className="flex items-center gap-2">
                        <div className="w-2 h-2 rounded-full bg-blue-500" />
-                       <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Denní úkoly</h3>
+                       <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Daily tasks</h3>
                     </div>
                     <div className="text-[9px] font-bold text-zinc-600 bg-white/5 px-2 py-0.5 rounded-md">
                        {tasks.filter(t => !t.sourceTaskId).length}
@@ -2442,7 +2442,7 @@ export default function App() {
                   {tasks.filter(t => !t.sourceTaskId).sort((a,b) => a.text.localeCompare(b.text)).length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-20">
                       <LayoutGrid size={40} className="mb-4 text-zinc-700" />
-                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600 text-center px-10">Zatím žádné koncepty k naplánování</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600 text-center px-10">No concepts to schedule yet</p>
                     </div>
                   ) : (
                     tasks.filter(t => !t.sourceTaskId).sort((a,b) => a.text.localeCompare(b.text)).map(t => (
@@ -2471,7 +2471,7 @@ export default function App() {
                         onClick={() => setActiveRoutineType(type)}
                         className={`flex-1 py-3 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all ${activeRoutineType === type ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-600 hover:text-zinc-400'}`}
                       >
-                        {type === 'morning' ? 'Ranní' : 'Večerní'}
+                        {type === 'morning' ? 'Morning' : 'Evening'}
                       </button>
                     ))}
                   </div>
@@ -2480,7 +2480,7 @@ export default function App() {
                     <div className="flex items-center gap-2">
                        <div className={`w-2.5 h-2.5 rounded-full ${activeRoutineType === 'morning' ? 'bg-orange-400' : 'bg-indigo-400'}`} />
                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-                         {activeRoutineType === 'morning' ? 'Ranní rutina' : 'Večerní rutina'}
+                         {activeRoutineType === 'morning' ? 'Morning Routine' : 'Evening Routine'}
                        </h3>
                     </div>
                     <button 
@@ -2488,7 +2488,7 @@ export default function App() {
                       className="p-1.5 bg-blue-600/10 text-blue-400 rounded-lg hover:bg-blue-600/20 transition-all border border-blue-500/10 flex items-center gap-1.5 active:scale-95"
                     >
                       <Plus size={10} strokeWidth={3} />
-                      <span className="text-[8px] font-bold uppercase tracking-wider">Úkol</span>
+                      <span className="text-[8px] font-bold uppercase tracking-wider">Task</span>
                     </button>
                   </div>
 
@@ -2499,8 +2499,8 @@ export default function App() {
                         return (
                           <div className="flex flex-col items-center justify-center py-20 opacity-20 text-center">
                             <Zap size={40} className="mb-4 text-zinc-700" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Rutina je zatím prázdná</p>
-                            <p className="text-[9px] mt-2 text-zinc-500 font-bold uppercase">Přidejte úkol z knihovny</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Routine is empty</p>
+                            <p className="text-[9px] mt-2 text-zinc-500 font-bold uppercase">Add a task from library</p>
                           </div>
                         );
                       }
@@ -2551,7 +2551,7 @@ export default function App() {
               <div className="px-8 pb-6 flex justify-between items-center">
                 <div>
                   <h2 className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-500">Pick to Routine</h2>
-                  <p className="text-sm font-bold text-white tracking-tight">Knihovna úkolů</p>
+                  <p className="text-sm font-bold text-white tracking-tight">Task library</p>
                 </div>
                 <button 
                   onClick={() => setShowRoutinePicker(null)}
@@ -2662,10 +2662,10 @@ export default function App() {
                       <button 
                         onClick={() => setShowHistory(true)}
                         className="p-2.5 hover:bg-white/5 rounded-xl text-blue-400 border border-white/5 bg-white/5 transition-all flex items-center gap-2"
-                        title="Všechny konverzace"
+                        title="All conversations"
                       >
                         <History size={18} />
-                        <span className="text-[10px] font-bold uppercase tracking-tight hidden sm:block">Historie</span>
+                        <span className="text-[10px] font-bold uppercase tracking-tight hidden sm:block">History</span>
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); setShowFullChat(false); }}
@@ -2757,7 +2757,7 @@ export default function App() {
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
                                       <div className={`w-2 h-2 rounded-full ${m.suggestedTask.status === 'added' ? 'bg-green-500' : 'bg-blue-500 animate-pulse'}`} />
-                                      <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Návrh úkolu</span>
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Suggested task</span>
                                     </div>
                                     <h4 className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-zinc-900'} truncate`}>{m.suggestedTask.text}</h4>
                                     {m.suggestedTask.description && (
@@ -2770,13 +2770,13 @@ export default function App() {
                                       className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center gap-2 shrink-0"
                                     >
                                       <Plus size={14} />
-                                      PŘIDAT
+                                      ADD
                                     </button>
                                   )}
                                   {m.suggestedTask.status === 'added' && (
                                     <div className="flex items-center gap-2 text-green-500 font-bold text-[10px] uppercase tracking-widest bg-green-500/10 px-3 py-1.5 rounded-lg border border-green-500/20 shrink-0">
                                       <Check size={12} />
-                                      PŘIDÁNO
+                                      ADDED
                                     </div>
                                   )}
                                 </div>
@@ -3182,8 +3182,8 @@ export default function App() {
                     <Zap size={20} className="text-white fill-current" />
                   </div>
                   <div className="flex flex-col">
-                    <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white">Shate Koncept</h2>
-                    <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Vytvořit nový nápad</p>
+                    <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white">Shate Concept</h2>
+                    <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Create a new idea</p>
                   </div>
                 </div>
                 <button 
@@ -3205,7 +3205,7 @@ export default function App() {
                       className="space-y-6"
                     >
                        <div className="space-y-4">
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">KROK 1: NÁZEV ÚKOLU</p>
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">STEP 1: TASK NAME</p>
                           <div className="relative group">
                             <div className="absolute left-4 top-4 text-zinc-700 group-focus-within:text-blue-500 transition-colors">
                               <Plus size={16} />
@@ -3217,7 +3217,7 @@ export default function App() {
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' && newTaskTitle.trim()) setTaskDrawerStep('type');
                               }}
-                              placeholder="Co je třeba udělat?"
+                              placeholder="What needs to be done?"
                               className="w-full bg-white/[0.02] border border-white/5 rounded-2xl p-4 pl-12 text-sm text-white placeholder:text-zinc-800 focus:outline-none focus:border-blue-500/30 transition-all font-bold tracking-tight"
                             />
                           </div>
@@ -3227,7 +3227,7 @@ export default function App() {
                           onClick={() => setTaskDrawerStep('type')}
                           className="w-full h-12 bg-white text-zinc-950 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 disabled:opacity-30 transition-all"
                         >
-                          Pokračovat
+                          Continue
                         </button>
                     </motion.div>
                   )}
@@ -3241,12 +3241,12 @@ export default function App() {
                       className="space-y-6"
                     >
                        <div className="space-y-4">
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">KROK 2: TYP AKTIVITY</p>
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">STEP 2: ACTIVITY TYPE</p>
                           <div className="grid grid-cols-1 gap-2">
                             {[
-                              { id: 'normal', label: 'Běžný úkol', desc: 'Klasický odškrtávací úkol', icon: Check, color: 'text-blue-400' },
-                              { id: 'prove_it', label: 'Ověření fotkou', desc: 'Vyžaduje fotodokumentaci', icon: Zap, color: 'text-orange-400' },
-                              { id: 'text_input', label: 'Otázka', desc: 'Vyžaduje textovou odpověď', icon: MessagesSquare, color: 'text-purple-400' }
+                              { id: 'normal', label: 'Normal task', desc: 'Classic checklist task', icon: Check, color: 'text-blue-400' },
+                              { id: 'prove_it', label: 'Photo verification', desc: 'Requires photo documentation', icon: Zap, color: 'text-orange-400' },
+                              { id: 'text_input', label: 'Question', desc: 'Requires text answer', icon: MessagesSquare, color: 'text-purple-400' }
                             ].map(t => (
                               <button
                                 key={t.id}
@@ -3271,7 +3271,7 @@ export default function App() {
                           onClick={() => setTaskDrawerStep('name')}
                           className="w-full h-12 border border-white/5 text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:text-white transition-all"
                         >
-                          Zpět
+                          Back
                         </button>
                     </motion.div>
                   )}
@@ -3285,44 +3285,44 @@ export default function App() {
                       className="space-y-6"
                     >
                        <div className="space-y-5">
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">KROK 3: DETAILY (VOLITELNÉ)</p>
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">STEP 3: DETAILS (OPTIONAL)</p>
                           
                           {newTaskType === 'text_input' && (
                             <div className="space-y-2">
-                              <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Otázka pro uživatele</label>
+                              <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Question for user</label>
                               <input 
                                 value={newTaskQuestion}
                                 onChange={(e) => setNewTaskQuestion(e.target.value)}
-                                placeholder="Na co se Shate zeptá?"
+                                placeholder="What will Shate ask?"
                                 className="w-full bg-white/[0.02] border border-white/5 rounded-xl p-3 text-xs text-white placeholder:text-zinc-800 transition-all"
                               />
                             </div>
                           )}
 
                           <div className="space-y-2">
-                            <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Popis úkolu</label>
+                            <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Task description</label>
                             <textarea 
                               value={newTaskDesc}
                               onChange={(e) => setNewTaskDesc(e.target.value)}
-                              placeholder="Více informací..."
+                              placeholder="More info..."
                               className="w-full bg-white/[0.02] border border-white/5 rounded-xl p-3 text-xs text-zinc-400 h-20 resize-none"
                             />
                           </div>
 
                           <div className="space-y-3">
-                            <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Opakováni & Kalendář</label>
+                            <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Repeat & Calendar</label>
                             <div className="grid grid-cols-2 gap-2">
                               <button 
                                 onClick={() => setNewTaskSchedule({ type: 'daily' })}
                                 className={`p-3 rounded-xl border text-[10px] font-bold transition-all ${newTaskSchedule?.type === 'daily' ? 'bg-blue-600/20 border-blue-500 text-blue-400' : 'bg-white/5 border-white/5 text-zinc-500'}`}
                               >
-                                Denně
+                                Daily
                               </button>
                               <button 
                                 onClick={() => setNewTaskSchedule(null)}
                                 className={`p-3 rounded-xl border text-[10px] font-bold transition-all ${!newTaskSchedule ? 'bg-white/10 border-white/10 text-white' : 'bg-white/5 border-white/5 text-zinc-500'}`}
                               >
-                                Jednorázově
+                                One-time
                               </button>
                             </div>
                          </div>
@@ -3343,13 +3343,13 @@ export default function App() {
                             }}
                             className="w-full h-12 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-all"
                           >
-                            Vytvořit úkol
+                            Create task
                           </button>
                           <button 
                             onClick={() => setTaskDrawerStep('type')}
                             className="w-full h-12 border border-white/5 text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:text-white transition-all"
                           >
-                            Zpět
+                            Back
                           </button>
                        </div>
                     </motion.div>
@@ -3377,8 +3377,8 @@ export default function App() {
             {!user ? (
                <div className="space-y-6">
                   <div className="space-y-2">
-                    <h2 className={`text-3xl font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-zinc-950'}`}>Vítejte</h2>
-                    <p className="text-sm text-zinc-500 font-medium leading-relaxed">Přihlaste se ke svému účtu a začněte den s jasným plánem a Shate po boku.</p>
+                    <h2 className={`text-3xl font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-zinc-950'}`}>Welcome</h2>
+                    <p className="text-sm text-zinc-500 font-medium leading-relaxed">Log in to your account and start your day with a clear plan and Shate by your side.</p>
                   </div>
                   
                   <button 
@@ -3387,7 +3387,7 @@ export default function App() {
                     className="w-full h-16 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all rounded-3xl text-[10px]"
                   >
                     <GoogleIcon />
-                    {isLoggingIn ? 'Přihlašování...' : 'Přihlásit přes Google'}
+                    {isLoggingIn ? 'Logging in...' : 'Sign in with Google'}
                   </button>
                   
                   <div className="pt-4 border-t border-white/5 flex items-center justify-center">
@@ -3427,7 +3427,7 @@ export default function App() {
                     }`}
                   >
                     <LogOut size={14} />
-                    Odhlásit se
+                    Log Out
                   </button>
                </div>
             )}

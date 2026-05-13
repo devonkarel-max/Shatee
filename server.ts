@@ -64,7 +64,7 @@ async function startServer() {
       const client = getAI(req);
       const result = await client.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [{ role: 'user', parts: [{ text: `Řekni hlubokým a klidným hlasem jako asistent Shate: ${text}` }] }],
+        contents: [{ role: 'user', parts: [{ text: `Speak in a deep and calm voice as Shate assistant: ${text}` }] }],
         config: {
           responseModalities: ["AUDIO"],
           speechConfig: {
@@ -99,11 +99,11 @@ async function startServer() {
       const buffer = await imageResp.arrayBuffer();
       const base64 = Buffer.from(buffer).toString('base64');
 
-      const prompt = `Uživatel právě odeslal fotografii jako důkaz splnění úkolu: "${taskText}". 
-      Analyzuj fotografii a zhodnoť, zda skutečně dokazuje splnění úkolu. 
-      Pokud ano, pochval uživatele a dej mu povzbuzující zpětnou vazbu (max 2 věty). 
-      Pokud ne, slušně vysvětli, co na fotce chybí. 
-      Odpověz česky, stručně a s empatií jako asistent Shate.`;
+      const prompt = `The user just submitted a photo as proof of completing the task: "${taskText}". 
+      Analyze the photo and evaluate if it truly proves task completion. 
+      If yes, praise the user and give encouraging feedback (max 2 sentences). 
+      If no, politely explain what is missing. 
+      Respond in English, concisely and with empathy as Shate assistant.`;
 
       const model = "gemini-3-flash-preview";
       const client = getAI(req);
