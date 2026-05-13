@@ -22,7 +22,8 @@ import {
   Volume2,
   Search,
   Settings,
-  Check
+  Check,
+  Compass
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { 
@@ -446,8 +447,9 @@ const TaskCard = ({
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<'today' | 'tasks'>('today');
+  const [activeTab, setActiveTab] = useState<'explore' | 'today' | 'tasks'>('today');
   const [tasksView, setTasksView] = useState<'tasks' | 'routines'>('tasks');
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [isChatMode, setIsChatMode] = useState(false);
@@ -627,6 +629,7 @@ export default function App() {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
       setIsLoggingIn(false);
+      setIsAuthReady(true);
     });
   }, []);
 
@@ -1811,7 +1814,29 @@ export default function App() {
       </AnimatePresence>
 
 
-      {!user ? (
+      {!isAuthReady ? (
+        <div className="flex-1 flex flex-col items-center justify-center bg-black p-8 space-y-8">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="relative"
+          >
+            <div className="w-20 h-20 bg-blue-600/10 rounded-[2.5rem] flex items-center justify-center">
+              <Zap size={32} className="text-blue-500 fill-blue-500/20" />
+            </div>
+            <motion.div
+              animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="absolute inset-0 bg-blue-600/30 rounded-full blur-2xl -z-10"
+            />
+          </motion.div>
+          
+          <div className="space-y-2 text-center">
+            <h1 className="text-xl font-black text-white tracking-widest uppercase">Shate</h1>
+            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.3em] animate-pulse">Syncing Session</p>
+          </div>
+        </div>
+      ) : !user ? (
         <div className="flex-1 flex flex-col items-center justify-start py-12 px-8 text-center relative overflow-y-auto bg-black custom-scrollbar">
           {/* Animated Background Elements */}
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" />
@@ -1877,7 +1902,29 @@ export default function App() {
       ) : (
         <div className="flex-1 overflow-hidden relative">
           <AnimatePresence mode="wait">
-          {activeTab === 'today' ? (
+          {activeTab === 'explore' ? (
+            <motion.div 
+              key="explore"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="h-full px-6 pt-2 flex flex-col items-center justify-center text-center space-y-6 pb-32"
+            >
+              <div className="w-24 h-24 rounded-[2.5rem] bg-zinc-900 border-2 border-white/5 flex items-center justify-center shadow-2xl relative group">
+                <div className="absolute inset-0 bg-blue-600/10 rounded-[2.5rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Compass size={40} className="text-zinc-700 group-hover:text-blue-500 transition-colors" strokeWidth={1.5} />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-white tracking-tight">Explore Shate</h2>
+                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.3em] max-w-[240px] mx-auto leading-loose">New horizons, routines and AI specialized agents coming soon.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="aspect-square bg-zinc-900/50 border border-white/5 rounded-3xl animate-pulse" />
+                ))}
+              </div>
+            </motion.div>
+          ) : activeTab === 'today' ? (
             <motion.div 
               key="today"
               initial={{ opacity: 0 }}
@@ -2842,31 +2889,42 @@ export default function App() {
       
       {/* Morphing Bottom Bar - ABSOLUTE POSITION (inside mockup) */}
       {!showSettings && (
-        <div className="absolute lg:absolute bottom-0 left-0 right-0 px-6 pt-4 pb-12 safe-area-bottom z-50 pointer-events-auto bg-zinc-950/80 backdrop-blur-xl border-t border-white/5 mx-auto max-w-md lg:max-w-none">
+        <div className="absolute lg:absolute bottom-0 left-0 right-0 px-6 pt-4 pb-12 safe-area-bottom z-50 pointer-events-auto mx-auto max-w-md lg:max-w-none">
         <div className="flex items-center gap-3 w-full relative h-14">
           <AnimatePresence mode="wait" initial={false}>
             {!isChatMode ? (
               <motion.div 
                 key="nav"
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="flex-1 flex gap-3 h-14"
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex-1 flex justify-center items-center h-14"
               >
-                <button 
-                  onClick={() => setActiveTab('today')}
-                  className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition-all shadow-xl shadow-black/20 ${activeTab === 'today' ? 'bg-white text-zinc-950 scale-[1.02]' : 'text-zinc-500 bg-zinc-900/50 border border-white/5 hover:bg-white/5'}`}
-                >
-                  <Calendar size={18} strokeWidth={2.5} />
-                  <span className="text-[8px] font-black uppercase mt-1 tracking-tighter">Today</span>
-                </button>
-                <button 
-                  onClick={() => setActiveTab('tasks')}
-                  className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition-all shadow-xl shadow-black/20 ${activeTab === 'tasks' ? 'bg-white text-zinc-950 scale-[1.02]' : 'text-zinc-500 bg-zinc-900/50 border border-white/5 hover:bg-white/5'}`}
-                >
-                  <LayoutGrid size={18} strokeWidth={2.5} />
-                  <span className="text-[8px] font-black uppercase mt-1 tracking-tighter">Tasks</span>
-                </button>
+                <div className="flex bg-white/[0.04] backdrop-blur-md rounded-[2rem] border border-white/5 p-1.5 gap-1.5 shadow-2xl">
+                  {[
+                    { id: 'explore', icon: Compass, label: 'Explore' },
+                    { id: 'today', icon: Calendar, label: 'Today' },
+                    { id: 'tasks', icon: LayoutGrid, label: 'Tasks' }
+                  ].map((item) => (
+                    <button 
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id as any)}
+                      className={`relative px-6 py-2 flex flex-col items-center justify-center transition-all group z-10 ${activeTab === item.id ? 'text-zinc-950' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    >
+                      {activeTab === item.id && (
+                        <motion.div 
+                          layoutId="active-nav-pill"
+                          className="absolute inset-0 bg-white rounded-2xl shadow-xl shadow-white/20"
+                          transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <div className="relative z-20 flex flex-col items-center">
+                        <item.icon size={16} strokeWidth={activeTab === item.id ? 2.5 : 2} className="transition-transform duration-300 group-active:scale-90" />
+                        <span className="text-[7px] font-black uppercase mt-1 tracking-widest leading-none">{item.label}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </motion.div>
             ) : (
               <motion.div 
@@ -3369,7 +3427,16 @@ export default function App() {
         {/* RIGHT: Login Panel (Desktop only) */}
         <div className="hidden lg:flex lg:w-1/4 xl:w-1/4 flex-col justify-center p-16">
           <div className={`p-10 rounded-[3rem] border shadow-2xl space-y-8 ${theme === 'dark' ? 'bg-zinc-900/40 border-white/5' : 'bg-white border-zinc-100'}`}>
-            {!user ? (
+            {!isAuthReady ? (
+               <div className="flex flex-col items-center justify-center p-12 space-y-4">
+                 <motion.div 
+                   animate={{ rotate: 360 }} 
+                   transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} 
+                   className="w-10 h-10 border-2 border-blue-500/20 border-t-blue-500 rounded-full" 
+                 />
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 animate-pulse">Checking Session</p>
+               </div>
+            ) : !user ? (
                <div className="space-y-6">
                   <div className="space-y-2">
                     <h2 className={`text-3xl font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-zinc-950'}`}>Welcome</h2>
