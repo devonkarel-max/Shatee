@@ -24,7 +24,6 @@ import {
   Settings,
   Check
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
 import Markdown from 'react-markdown';
 import { 
   auth, 
@@ -48,6 +47,15 @@ import {
 } from './lib/firebase';
 
 // --- Types ---
+
+const Type = {
+  OBJECT: 'OBJECT',
+  STRING: 'STRING',
+  NUMBER: 'NUMBER',
+  BOOLEAN: 'BOOLEAN',
+  ARRAY: 'ARRAY',
+  INTEGER: 'INTEGER',
+} as const;
 
 interface SuggestedTask {
   text: string;
@@ -149,15 +157,6 @@ const FeatureItem = ({ icon, title, desc, theme }: { icon: React.ReactNode, titl
   </div>
 );
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-
-// Helper to get Gemini client, using user key if available
-const getGenAI = (userKey?: string) => {
-  if (userKey) {
-    return new GoogleGenAI({ apiKey: userKey });
-  }
-  return ai;
-};
 const SYSTEM_PROMPT = `Jsi Shate, minimalistický a efektivní osobní asistent. Tvým úkolem je pomáhat s organizací času a správou ranních a večerních rutin.
 
 INSTRUKCE PRO ÚKOLY A RUTINY:
@@ -323,6 +322,13 @@ const TaskCard = ({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
+            {task.description && (
+              <div className="mt-2.5 pt-2.5 border-t border-white/5">
+                <p className={`text-zinc-500 leading-relaxed font-medium ${size === 'small' ? 'text-[9px]' : 'text-[11px]'}`}>
+                  {task.description}
+                </p>
+              </div>
+            )}
             {task.completed && task.aiFeedback && (
               <div className="bg-blue-600/5 border-l-2 border-blue-600 p-2.5 rounded-lg flex gap-3 items-start mt-2">
                 {task.proofImageUrl && (
@@ -460,7 +466,6 @@ export default function App() {
   const [activeRoutineType, setActiveRoutineType] = useState<'morning' | 'evening'>('morning');
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [isPreparingMic, setIsPreparingMic] = useState(false);
   const [voiceAmplitude, setVoiceAmplitude] = useState<number[]>(Array(5).fill(0));
   const [isTyping, setIsTyping] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -474,6 +479,8 @@ export default function App() {
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [newTaskType, setNewTaskType] = useState<'normal' | 'prove_it' | 'text_input'>('normal');
   const [newTaskQuestion, setNewTaskQuestion] = useState('');
+  const [taskDrawerStep, setTaskDrawerStep] = useState<'name' | 'type' | 'extras'>('name');
+  const [newTaskSchedule, setNewTaskSchedule] = useState<{ type: 'daily' | 'weekly' | 'interval', days?: number[], interval?: number, startDate?: number } | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [tempEditingTask, setTempEditingTask] = useState<Task | null>(null);
   const [proofTask, setProofTask] = useState<Task | null>(null);
@@ -489,9 +496,6 @@ export default function App() {
   const [textAnswer, setTextAnswer] = useState('');
 
   const lastErrorRef = useRef<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
 
   const playSound = (type: 'send' | 'start_reply' | 'thinking') => {
     if (!isSoundEnabled) return;
@@ -918,53 +922,6 @@ export default function App() {
     };
   }, []);
 
-  const transcribeWithGemini = async (audioBlob: Blob) => {
-    try {
-      addMicLog("Gemini: Zpracovávám audio...");
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
-        };
-      });
-      reader.readAsDataURL(audioBlob);
-      const base64Data = await base64Promise;
-
-      const client = getGenAI(userSettings?.geminiApiKey);
-      const result = await client.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: { mimeType: audioBlob.type, data: base64Data }
-              },
-              {
-                text: "Přepiš přesně a do slova tuto nahrávku do textu. Vrať pouze přepsaný text bez komentářů. Pokud není nic slyšet, vrať prázdnou zprávu."
-              }
-            ]
-          }
-        ]
-      });
-
-      const transcript = result.text?.trim() || "";
-      if (transcript) {
-        addMicLog(`Přepsáno: ${transcript}`);
-        setInputText(transcript);
-        handleSend(transcript);
-      } else {
-        addMicLog("Nebylo nic slyšet.");
-        setIsRecording(false);
-      }
-    } catch (error) {
-      console.error("Gemini Transcription Error:", error);
-      addMicLog("Přepis selhal.");
-      setIsRecording(false);
-    }
-  };
-
   const speak = (text: string) => {
     if (!('speechSynthesis' in window) || !isSoundEnabled) return;
     window.speechSynthesis.cancel();
@@ -1096,22 +1053,29 @@ export default function App() {
     setTimeout(() => playSound('thinking'), 150);
 
     try {
-      const client = getGenAI(userSettings?.geminiApiKey);
-      const result = await client.models.generateContent({ 
-        model: "gemini-3-flash-preview",
-        config: {
+      const chatHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (userSettings?.geminiApiKey) {
+        chatHeaders['x-gemini-key'] = userSettings.geminiApiKey;
+      }
+
+      const chatResp = await apiFetch('/api/chat', {
+        method: 'POST',
+        headers: chatHeaders,
+        body: JSON.stringify({ 
+          messages: [
+            ...messages.map(m => ({ 
+              role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model', 
+              parts: [{ text: m.content }] 
+            })).slice(-10),
+            { role: 'user', parts: [{ text: textToSend }] }
+          ],
           systemInstruction: SYSTEM_PROMPT,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          tools: TOOLS as any
-        },
-        contents: [
-          ...messages.map(m => ({ 
-            role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model', 
-            parts: [{ text: m.content }] 
-          })).slice(-10),
-          { role: 'user', parts: [{ text: textToSend }] }
-        ]
+          tools: TOOLS
+        })
       });
+
+      if (!chatResp.ok) throw new Error("Server chat fail");
+      const result = await chatResp.json();
 
       let assistantMsgContent = result.text || "";
       let suggestedTask: SuggestedTask | undefined;
@@ -1598,16 +1562,22 @@ export default function App() {
                       <div className="space-y-4">
                         <div className={`p-4 border rounded-xl space-y-3 ${theme === 'dark' ? 'bg-zinc-900 border-white/5' : 'bg-zinc-50 border-zinc-100'}`}>
                           <div className="flex items-center justify-between">
-                            <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>Gemini API Klíč</span>
+                            <div className="flex flex-col">
+                              <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>Vlastní Gemini API Klíč</span>
+                              <span className="text-[8px] text-zinc-500 mt-0.5">Volitelné - Shate má vestavěný klíč</span>
+                            </div>
                             <Zap size={14} className="text-amber-400" />
                           </div>
-                          <input 
-                            type="password"
-                            value={tempApiKey || ''}
-                            onChange={(e) => setTempApiKey(e.target.value)}
-                            placeholder="Zadejte svůj klíč..."
-                            className={`w-full p-3 rounded-lg text-xs leading-none transition-all ${theme === 'dark' ? 'bg-black/50 border-white/5 text-white focus:border-blue-500 whitespace-nowrap overflow-hidden text-ellipsis' : 'bg-white border-zinc-200 text-zinc-900 focus:border-blue-400'} border outline-none`}
-                          />
+                          <div className="space-y-2">
+                            <input 
+                              type="password"
+                              value={tempApiKey || ''}
+                              onChange={(e) => setTempApiKey(e.target.value)}
+                              placeholder="Paste your key here..."
+                              className={`w-full p-3 rounded-lg text-xs leading-none transition-all ${theme === 'dark' ? 'bg-black/50 border-white/5 text-white focus:border-blue-500' : 'bg-white border-zinc-200 text-zinc-900 focus:border-blue-400'} border outline-none`}
+                            />
+                            <p className="text-[8px] text-zinc-600 leading-tight">Vložte klíč jako prostý text. Pokud jej nahrajete jako soubor, nebude fungovat.</p>
+                          </div>
                           <button 
                             onClick={(e) => { e.stopPropagation(); saveUserSettings(); }}
                             disabled={isSavingSettings}
@@ -2819,7 +2789,7 @@ export default function App() {
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder={isPreparingMic ? "Připravuji mikrofon..." : isRecording ? "Poslouchám..." : "Napište Shate..."}
+                    placeholder="Napište Shate..."
                     className="w-full bg-transparent text-sm focus:outline-none placeholder:text-zinc-600 font-bold transition-all"
                   />
                 </div>
@@ -2858,7 +2828,15 @@ export default function App() {
                   animate={{ scale: 1, y: -64, opacity: 1 }}
                   exit={{ scale: 0, y: 10, opacity: 0 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowTaskDrawer(true)}
+                  onClick={() => {
+                    setTaskDrawerStep('name');
+                    setShowTaskDrawer(true);
+                    setNewTaskTitle('');
+                    setNewTaskDesc('');
+                    setNewTaskType('normal');
+                    setNewTaskQuestion('');
+                    setNewTaskSchedule(null);
+                  }}
                   className="absolute w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-black/40 bg-zinc-900 border border-white/10 text-white hover:bg-zinc-800 transition-colors"
                 >
                   <Plus size={24} strokeWidth={3} />
@@ -3098,76 +3076,167 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="relative group">
-                  <div className="absolute left-5 top-5 text-zinc-700 group-focus-within:text-blue-500 transition-colors">
-                    <MessagesSquare size={16} />
-                  </div>
-                  <input 
-                    autoFocus
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Co vás napadlo?"
-                    className="w-full bg-white/[0.02] border border-white/5 rounded-[1.5rem] p-5 pl-12 text-sm text-white placeholder:text-zinc-800 focus:outline-none focus:border-blue-500/30 transition-all font-bold tracking-tight shadow-inner"
-                  />
-                </div>
-                <div className="relative group">
-                   <div className="absolute left-5 top-5 text-zinc-700 group-focus-within:text-blue-500 transition-colors">
-                    <Search size={16} />
-                  </div>
-                  <textarea 
-                    value={newTaskDesc}
-                    onChange={(e) => setNewTaskDesc(e.target.value)}
-                    placeholder="Tady můžete rozvést své myšlenky..."
-                    className="w-full bg-white/[0.02] border border-white/5 rounded-[1.5rem] p-5 pl-12 text-[12px] text-zinc-400 placeholder:text-zinc-800 focus:outline-none focus:border-blue-500/30 transition-all h-28 resize-none leading-relaxed shadow-inner"
-                  />
-                </div>
-                <div className="pt-2 flex flex-col gap-3">
-                  <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
-                    {[
-                      { id: 'normal', label: 'Běžný', icon: Check },
-                      { id: 'prove_it', label: 'Prove It', icon: Zap },
-                      { id: 'text_input', label: 'Otázka', icon: MessagesSquare }
-                    ].map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => setNewTaskType(t.id as 'normal' | 'prove_it' | 'text_input')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${newTaskType === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-600 hover:text-zinc-400'}`}
-                      >
-                        <t.icon size={12} className={newTaskType === t.id ? 'text-white' : ''} />
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {newTaskType === 'text_input' && (
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <AnimatePresence mode="wait">
+                  {taskDrawerStep === 'name' && (
                     <motion.div 
-                      initial={{ opacity: 0, y: -10 }} 
-                      animate={{ opacity: 1, y: 0 }}
-                      className="relative group"
+                      key="step-name"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-6"
                     >
-                      <div className="absolute left-5 top-5 text-zinc-700 group-focus-within:text-purple-500 transition-colors">
-                        <MessagesSquare size={16} />
-                      </div>
-                      <input 
-                        value={newTaskQuestion}
-                        onChange={(e) => setNewTaskQuestion(e.target.value)}
-                        placeholder="Na co se Shate zeptá při plnění?"
-                        className="w-full bg-white/[0.02] border border-white/5 rounded-[1.5rem] p-5 pl-12 text-sm text-white placeholder:text-zinc-800 focus:outline-none focus:border-purple-500/30 transition-all font-bold tracking-tight shadow-inner"
-                      />
+                       <div className="space-y-4">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">KROK 1: NÁZEV ÚKOLU</p>
+                          <div className="relative group">
+                            <div className="absolute left-4 top-4 text-zinc-700 group-focus-within:text-blue-500 transition-colors">
+                              <Plus size={16} />
+                            </div>
+                            <input 
+                              autoFocus
+                              value={newTaskTitle}
+                              onChange={(e) => setNewTaskTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && newTaskTitle.trim()) setTaskDrawerStep('type');
+                              }}
+                              placeholder="Co je třeba udělat?"
+                              className="w-full bg-white/[0.02] border border-white/5 rounded-2xl p-4 pl-12 text-sm text-white placeholder:text-zinc-800 focus:outline-none focus:border-blue-500/30 transition-all font-bold tracking-tight"
+                            />
+                          </div>
+                       </div>
+                       <button 
+                          disabled={!newTaskTitle.trim()}
+                          onClick={() => setTaskDrawerStep('type')}
+                          className="w-full h-12 bg-white text-zinc-950 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 disabled:opacity-30 transition-all"
+                        >
+                          Pokračovat
+                        </button>
                     </motion.div>
                   )}
 
-                  <button 
-                    disabled={!newTaskTitle.trim()}
-                    onClick={() => addTask(newTaskTitle, newTaskDesc, '', newTaskType, newTaskQuestion)}
-                    className="w-full h-14 bg-white disabled:bg-zinc-900 disabled:text-zinc-800 text-zinc-950 text-[11px] font-black uppercase tracking-[0.3em] rounded-[1.5rem] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2.5 group overflow-hidden relative"
-                  >
-                    <div className="absolute inset-0 bg-blue-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                    <CheckCircle2 size={16} className="relative z-10 group-hover:text-white transition-colors" />
-                    <span className="relative z-10 group-hover:text-white transition-colors">Uložit jako koncept</span>
-                  </button>
-                </div>
+                  {taskDrawerStep === 'type' && (
+                    <motion.div 
+                      key="step-type"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-6"
+                    >
+                       <div className="space-y-4">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">KROK 2: TYP AKTIVITY</p>
+                          <div className="grid grid-cols-1 gap-2">
+                            {[
+                              { id: 'normal', label: 'Běžný úkol', desc: 'Klasický odškrtávací úkol', icon: Check, color: 'text-blue-400' },
+                              { id: 'prove_it', label: 'Ověření fotkou', desc: 'Vyžaduje fotodokumentaci', icon: Zap, color: 'text-orange-400' },
+                              { id: 'text_input', label: 'Otázka', desc: 'Vyžaduje textovou odpověď', icon: MessagesSquare, color: 'text-purple-400' }
+                            ].map(t => (
+                              <button
+                                key={t.id}
+                                onClick={() => {
+                                  setNewTaskType(t.id as 'normal' | 'prove_it' | 'text_input');
+                                  setTaskDrawerStep('extras');
+                                }}
+                                className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all ${newTaskType === t.id ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                              >
+                                <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center ${t.color}`}>
+                                  <t.icon size={18} />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-white">{t.label}</p>
+                                  <p className="text-[10px] text-zinc-500">{t.desc}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                       </div>
+                       <button 
+                          onClick={() => setTaskDrawerStep('name')}
+                          className="w-full h-12 border border-white/5 text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:text-white transition-all"
+                        >
+                          Zpět
+                        </button>
+                    </motion.div>
+                  )}
+
+                  {taskDrawerStep === 'extras' && (
+                    <motion.div 
+                      key="step-extras"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-6"
+                    >
+                       <div className="space-y-5">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">KROK 3: DETAILY (VOLITELNÉ)</p>
+                          
+                          {newTaskType === 'text_input' && (
+                            <div className="space-y-2">
+                              <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Otázka pro uživatele</label>
+                              <input 
+                                value={newTaskQuestion}
+                                onChange={(e) => setNewTaskQuestion(e.target.value)}
+                                placeholder="Na co se Shate zeptá?"
+                                className="w-full bg-white/[0.02] border border-white/5 rounded-xl p-3 text-xs text-white placeholder:text-zinc-800 transition-all"
+                              />
+                            </div>
+                          )}
+
+                          <div className="space-y-2">
+                            <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Popis úkolu</label>
+                            <textarea 
+                              value={newTaskDesc}
+                              onChange={(e) => setNewTaskDesc(e.target.value)}
+                              placeholder="Více informací..."
+                              className="w-full bg-white/[0.02] border border-white/5 rounded-xl p-3 text-xs text-zinc-400 h-20 resize-none"
+                            />
+                          </div>
+
+                          <div className="space-y-3">
+                            <label className="text-[9px] font-bold text-zinc-500 uppercase ml-1">Opakováni & Kalendář</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button 
+                                onClick={() => setNewTaskSchedule({ type: 'daily' })}
+                                className={`p-3 rounded-xl border text-[10px] font-bold transition-all ${newTaskSchedule?.type === 'daily' ? 'bg-blue-600/20 border-blue-500 text-blue-400' : 'bg-white/5 border-white/5 text-zinc-500'}`}
+                              >
+                                Denně
+                              </button>
+                              <button 
+                                onClick={() => setNewTaskSchedule(null)}
+                                className={`p-3 rounded-xl border text-[10px] font-bold transition-all ${!newTaskSchedule ? 'bg-white/10 border-white/10 text-white' : 'bg-white/5 border-white/5 text-zinc-500'}`}
+                              >
+                                Jednorázově
+                              </button>
+                            </div>
+                         </div>
+                       </div>
+
+                       <div className="flex flex-col gap-3">
+                         <button 
+                            onClick={async () => {
+                              const id = await addTask(newTaskTitle, newTaskDesc, '', newTaskType, newTaskQuestion);
+                              if (id && newTaskSchedule) {
+                                try {
+                                  const { doc, updateDoc } = await import('firebase/firestore');
+                                  await updateDoc(doc(db, 'tasks', id), { schedule: newTaskSchedule });
+                                } catch (error) {
+                                  console.error("Failed to update task schedule:", error);
+                                }
+                              }
+                            }}
+                            className="w-full h-12 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-all"
+                          >
+                            Vytvořit úkol
+                          </button>
+                          <button 
+                            onClick={() => setTaskDrawerStep('type')}
+                            className="w-full h-12 border border-white/5 text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:text-white transition-all"
+                          >
+                            Zpět
+                          </button>
+                       </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
           </>

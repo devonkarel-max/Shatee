@@ -129,6 +129,30 @@ async function startServer() {
     }
   });
 
+  // Chat with Gemini
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { messages, systemInstruction, tools } = req.body;
+      if (!messages) return res.status(400).json({ error: "Missing messages" });
+
+      const client = getAI(req);
+      const result = await (client.models.generateContent as any)({ // eslint-disable-line @typescript-eslint/no-explicit-any
+        model: "gemini-3-flash-preview",
+        systemInstruction: systemInstruction,
+        tools: tools,
+        contents: messages
+      });
+
+      res.json({ 
+        text: result.text,
+        functionCalls: result.functionCalls
+      });
+    } catch (error) {
+      console.error("Gemini Chat Error:", error);
+      res.status(500).json({ error: "Failed to process chat" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
