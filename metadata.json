@@ -1,13 +1,9 @@
 {
-  "name": "Shate AI",
-  "description": "Minimalist mobile personal assistant with AI chat, voice input, and task management.",
+  "name": "Shate AI Assistant",
+  "description": "A high-performance personal assistant and routine optimizer with real-time AI insights, voice processing, and intelligent habit tracking.",
   "requestFramePermissions": [
     "microphone",
-    "camera"
-  ],
-  "majorCapabilities": [
-    "AI Chat",
-    "Voice-to-Text",
-    "Task Management"
+    "camera",
+    "geolocation"
   ]
 }

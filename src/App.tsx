@@ -1812,22 +1812,72 @@ export default function App() {
 
 
       {!user ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-12">
-          <div className="space-y-4">
-            <div className="w-20 h-20 bg-white/5 border border-white/10 shadow-2xl rounded-2xl flex items-center justify-center mb-8 mx-auto">
-              <Zap size={40} className="text-white fill-current translate-x-0.5" />
-            </div>
-            <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Shate</h2>
-            <p className="text-zinc-500 text-sm max-w-[220px] mx-auto leading-relaxed font-medium">Váš osobní asistent synchronizovaný napříč zařízeními.</p>
-          </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden bg-black">
+          {/* Animated Background Elements */}
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-600/10 blur-[120px] rounded-full animate-pulse [animation-delay:2s]" />
           
-          <button 
-            onClick={login} 
-            className="w-full h-14 bg-white text-zinc-950 font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-2xl hover:bg-zinc-100 transition-all active:scale-[0.98] rounded-none text-xs"
-          >
-            <GoogleIcon />
-            <span>Přihlásit se</span>
-          </button>
+          <div className="relative z-10 w-full max-w-sm space-y-12">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="space-y-6"
+            >
+              <div className="w-24 h-24 bg-white/[0.03] border border-white/10 shadow-2xl rounded-3xl flex items-center justify-center mb-8 mx-auto relative group overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <Zap size={48} className="text-white fill-white/10 relative z-10" />
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-5xl font-black uppercase tracking-tighter text-white inline-block relative">
+                  Shate
+                  <span className="absolute -top-1 -right-4 w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+                </h2>
+                <p className="text-zinc-500 text-sm leading-relaxed font-medium tracking-wide">
+                  Intelligence for your daily flow.
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4, duration: 0.8 }}
+              className="grid grid-cols-1 gap-3 pt-4"
+            >
+              {[
+                { icon: Zap, text: "AI powered routines", color: "text-blue-400" },
+                { icon: MessagesSquare, text: "Natural chat interaction", color: "text-purple-400" },
+                { icon: History, text: "Smart progress tracking", color: "text-emerald-400" }
+              ].map((feature, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] border border-white/5 rounded-2xl">
+                  <feature.icon size={14} className={feature.color} />
+                  <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400">{feature.text}</span>
+                </div>
+              ))}
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+              className="pt-8"
+            >
+              <button 
+                onClick={login} 
+                className="w-full h-16 bg-white text-zinc-950 font-black uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:bg-zinc-100 transition-all active:scale-[0.98] rounded-3xl text-[11px] group"
+              >
+                <div className="w-6 h-6 bg-zinc-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <GoogleIcon />
+                </div>
+                <span>Vstoupit do Shate</span>
+              </button>
+              <p className="mt-6 text-[9px] font-bold text-zinc-700 uppercase tracking-widest">
+                Protected by secure multi-factor auth
+              </p>
+            </motion.div>
+          </div>
         </div>
       ) : (
         <div className="flex-1 overflow-hidden relative">
