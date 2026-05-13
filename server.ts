@@ -161,24 +161,9 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    // Set caching headers for static assets
-    app.use(express.static(distPath, {
-      maxAge: '1d',
-      setHeaders: (res, path) => {
-        if (path.endsWith('index.html')) {
-          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-          res.setHeader('Pragma', 'no-cache');
-          res.setHeader('Expires', '0');
-        }
-      }
-    }));
-    
+    const distPath = path.join(__dirname, 'dist');
+    app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      // Don't serve index.html for missing assets or API routes
-      if (req.path.startsWith('/api') || req.path.includes('.')) {
-        return res.status(404).send('Not Found');
-      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
