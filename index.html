@@ -11,6 +11,19 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon.svg" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      // Force reload if we suspect cache issues
+      if (window.performance && window.performance.navigation.type === 1) {
+        console.log('Page reloaded');
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

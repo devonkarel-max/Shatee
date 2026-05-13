@@ -2909,7 +2909,7 @@ export default function App() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="flex-1 flex justify-center items-center h-14"
               >
-                <div className="flex bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 p-1.5 gap-1 shadow-2xl w-full max-w-[340px] mx-auto group/nav">
+                <div className="flex bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 p-2 gap-3 shadow-2xl w-full max-w-[360px] mx-auto group/nav">
                   {[
                     { id: 'explore', icon: Compass, label: 'Explore' },
                     { id: 'today', icon: Calendar, label: 'Today' },
@@ -2918,7 +2918,7 @@ export default function App() {
                     <button 
                       key={item.id}
                       onClick={() => setActiveTab(item.id as any)}
-                      className={`relative flex-1 flex flex-col items-center justify-center py-2.5 transition-all duration-500 group z-10 ${activeTab === item.id ? 'text-zinc-950 px-2' : 'text-zinc-500 hover:text-zinc-300'}`}
+                      className={`relative flex-1 flex flex-col items-center justify-center py-2 transition-all duration-500 group z-10 ${activeTab === item.id ? 'text-zinc-950 px-2' : 'text-zinc-500 hover:text-zinc-300'}`}
                     >
                       {activeTab === item.id && (
                         <motion.div 
