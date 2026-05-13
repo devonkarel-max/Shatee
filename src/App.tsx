@@ -1919,8 +1919,17 @@ export default function App() {
                 <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.3em] max-w-[240px] mx-auto leading-loose">New horizons, routines and AI specialized agents coming soon.</p>
               </div>
               <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
-                {[1,2,3,4].map(i => (
-                  <div key={i} className="aspect-square bg-zinc-900/50 border border-white/5 rounded-3xl animate-pulse" />
+                {[
+                  { title: "AI Agents", desc: "Specialized helpers" },
+                  { title: "Routines", desc: "Unlock peak state" },
+                  { title: "Biohacking", desc: "Data-driven life" },
+                  { title: "Zen", desc: "Mindful moments" }
+                ].map((card, i) => (
+                  <div key={i} className="aspect-square bg-zinc-900/50 border border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-1 group/card hover:bg-white/[0.02] transition-colors cursor-wait p-4">
+                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-800 group-hover/card:bg-blue-500/50 transition-colors mb-2" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover/card:text-white transition-colors">{card.title}</span>
+                    <span className="text-[7px] font-bold text-zinc-700 uppercase tracking-tight">{card.desc}</span>
+                  </div>
                 ))}
               </div>
             </motion.div>
@@ -2900,7 +2909,7 @@ export default function App() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="flex-1 flex justify-center items-center h-14"
               >
-                <div className="flex bg-white/[0.04] backdrop-blur-md rounded-[2rem] border border-white/5 p-1.5 gap-1.5 shadow-2xl">
+                <div className="flex bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 p-1.5 gap-1 shadow-2xl w-full max-w-[340px] mx-auto group/nav">
                   {[
                     { id: 'explore', icon: Compass, label: 'Explore' },
                     { id: 'today', icon: Calendar, label: 'Today' },
@@ -2909,18 +2918,20 @@ export default function App() {
                     <button 
                       key={item.id}
                       onClick={() => setActiveTab(item.id as any)}
-                      className={`relative px-6 py-2 flex flex-col items-center justify-center transition-all group z-10 ${activeTab === item.id ? 'text-zinc-950' : 'text-zinc-500 hover:text-zinc-300'}`}
+                      className={`relative flex-1 flex flex-col items-center justify-center py-2.5 transition-all duration-500 group z-10 ${activeTab === item.id ? 'text-zinc-950 px-2' : 'text-zinc-500 hover:text-zinc-300'}`}
                     >
                       {activeTab === item.id && (
                         <motion.div 
                           layoutId="active-nav-pill"
-                          className="absolute inset-0 bg-white rounded-2xl shadow-xl shadow-white/20"
+                          className="absolute inset-0 bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(255,255,255,0.1)]"
                           transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                         />
                       )}
                       <div className="relative z-20 flex flex-col items-center">
-                        <item.icon size={16} strokeWidth={activeTab === item.id ? 2.5 : 2} className="transition-transform duration-300 group-active:scale-90" />
-                        <span className="text-[7px] font-black uppercase mt-1 tracking-widest leading-none">{item.label}</span>
+                        <item.icon size={activeTab === item.id ? 18 : 16} strokeWidth={activeTab === item.id ? 3 : 2} className="transition-all duration-300" />
+                        <span className={`text-[7px] font-black uppercase mt-1 tracking-[0.2em] transition-all duration-300 ${activeTab === item.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
+                          {item.label}
+                        </span>
                       </div>
                     </button>
                   ))}
