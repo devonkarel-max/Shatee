@@ -459,6 +459,8 @@ export default function App() {
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [tempApiKey, setTempApiKey] = useState('');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [panels, setPanels] = useState<TaskPanel[]>([]);
@@ -789,6 +791,42 @@ export default function App() {
       handleFirestoreError(error, OperationType.UPDATE, 'userSettings');
     } finally {
       setIsSavingSettings(false);
+    }
+  };
+
+  const testGeminiKey = async () => {
+    if (!tempApiKey.trim()) {
+      setTestResult({ success: false, message: 'Prosím zadejte klíč.' });
+      return;
+    }
+    
+    setIsTestingKey(true);
+    setTestResult(null);
+    
+    try {
+      const resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-gemini-key': tempApiKey
+        },
+        body: JSON.stringify({
+          messages: [{ role: 'user', parts: [{ text: 'Respond with exactly one word: "OK"' }] }],
+          systemInstruction: 'You are a testing assistant focusing on API connectivity test.',
+        })
+      });
+      
+      const data = await resp.json();
+      if (resp.ok && data.text) {
+        setTestResult({ success: true, message: 'Klíč je platný a funkční!' });
+      } else {
+        const errorMsg = data.error || 'Chyba při komunikaci s API.';
+        setTestResult({ success: false, message: `Chyba: ${errorMsg}` });
+      }
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      setTestResult({ success: false, message: `Neočekávaná chyba: ${error.message || 'Připojení selhalo'}` });
+    } finally {
+      setIsTestingKey(false);
     }
   };
 
@@ -1568,27 +1606,57 @@ export default function App() {
                             </div>
                             <Zap size={14} className="text-amber-400" />
                           </div>
-                          <div className="space-y-2">
+                          <div className="space-y-4">
                             <input 
                               type="password"
                               value={tempApiKey || ''}
-                              onChange={(e) => setTempApiKey(e.target.value)}
+                              onChange={(e) => {
+                                setTempApiKey(e.target.value);
+                                setTestResult(null);
+                              }}
                               placeholder="Paste your key here..."
                               className={`w-full p-3 rounded-lg text-xs leading-none transition-all ${theme === 'dark' ? 'bg-black/50 border-white/5 text-white focus:border-blue-500' : 'bg-white border-zinc-200 text-zinc-900 focus:border-blue-400'} border outline-none`}
                             />
+                            
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); saveUserSettings(); }}
+                                disabled={isSavingSettings || tempApiKey === (userSettings?.geminiApiKey || '')}
+                                className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                  tempApiKey === (userSettings?.geminiApiKey || '') 
+                                    ? 'bg-zinc-800 text-zinc-600 border border-zinc-700/50 cursor-default'
+                                    : 'bg-blue-600 text-white hover:bg-blue-500 active:scale-95'
+                                }`}
+                              >
+                                {isSavingSettings ? 'Ukládám...' : 'Uložit'}
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); testGeminiKey(); }}
+                                disabled={isTestingKey || !tempApiKey.trim()}
+                                className={`px-4 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                  isTestingKey ? 'bg-zinc-800 text-zinc-600' : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white active:scale-95'
+                                }`}
+                              >
+                                {isTestingKey ? 'Prověřuji...' : 'Otestovat'}
+                              </button>
+                            </div>
+
+                            {testResult && (
+                              <motion.div 
+                                initial={{ opacity: 0, y: -5 }} 
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`p-3 rounded-lg text-[9px] leading-relaxed font-semibold flex items-start gap-2.5 ${
+                                  testResult.success ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                }`}
+                              >
+                                {testResult.success ? <Check size={12} className="shrink-0 mt-0.5" /> : <Zap size={12} className="shrink-0 mt-0.5" />}
+                                <span>{testResult.message}</span>
+                              </motion.div>
+                            )}
+
                             <p className="text-[8px] text-zinc-600 leading-tight">Vložte klíč jako prostý text. Pokud jej nahrajete jako soubor, nebude fungovat.</p>
                           </div>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); saveUserSettings(); }}
-                            disabled={isSavingSettings}
-                            className={`w-full py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                              tempApiKey === (userSettings?.geminiApiKey || '') 
-                                ? 'bg-zinc-800 text-zinc-600 border border-zinc-700/50 cursor-default'
-                                : 'bg-blue-600 text-white hover:bg-blue-500 active:scale-95'
-                            }`}
-                          >
-                            {isSavingSettings ? 'Ukládám...' : 'Uložit nastavení'}
-                          </button>
+
                         </div>
 
                         <div className={`flex items-center justify-between p-3.5 border rounded-xl ${theme === 'dark' ? 'bg-zinc-900 border-white/5' : 'bg-zinc-50 border-zinc-100'}`}>
